@@ -93,6 +93,11 @@ export default function HomePage() {
 
   const handleStartGame = (game: GameType) => {
     sound.playClick();
+    if (!student) {
+      sound.playWrong();
+      setAuthModalOpen(true);
+      return;
+    }
     setActiveGame(game);
   };
 
@@ -532,7 +537,6 @@ export default function HomePage() {
           <div className="flex items-center gap-4">
             <a href="#games" className="hover:text-indigo-600 transition">Bài Ôn Tập</a>
             <a href="#leaderboard" className="hover:text-indigo-600 transition">Bảng Thành Tích</a>
-            <a href="/teacher" className="hover:text-indigo-600 transition">Cổng Cô Giáo</a>
           </div>
 
           <p className="text-slate-400">© 2026 EduSpark. Chuẩn sư phạm & công nghệ giáo dục hiện đại.</p>

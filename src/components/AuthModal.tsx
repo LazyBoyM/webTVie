@@ -42,6 +42,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "student" }: A
     loginAsTeacher();
     sound.playVictory();
     onClose();
+    window.location.href = "/teacher";
   };
 
   const simulateQrScan = (id: string) => {
