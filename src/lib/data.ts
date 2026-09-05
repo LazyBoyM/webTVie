@@ -152,20 +152,20 @@ export interface DailyQuest {
   currentCount: number;
   rewardXp: number;
   icon: string;
-  gameType: "speed-quiz" | "sorting-basket" | "laser-match" | "word-scramble" | "true-false" | "memory-flip";
+  gameType: "speed-quiz" | "sorting-basket" | "laser-match" | "word-scramble" | "true-false" | "memory-flip" | "sentence-builder" | "lucky-wheel";
 }
 
 export const DEFAULT_DAILY_QUESTS: DailyQuest[] = [
   { id: "quest_1", title: "Vượt qua 1 bài Vua Tiếng Việt", targetCount: 1, currentCount: 0, rewardXp: 60, icon: "⚡", gameType: "speed-quiz" },
   { id: "quest_2", title: "Phân loại 10 từ vào đúng giỏ Từ Loại", targetCount: 1, currentCount: 0, rewardXp: 80, icon: "🧺", gameType: "sorting-basket" },
-  { id: "quest_3", title: "Ghép đúng 2 từ trong Thánh Chính Tả", targetCount: 2, currentCount: 0, rewardXp: 70, icon: "🔤", gameType: "word-scramble" },
-  { id: "quest_4", title: "Vượt ải Đúng/Sai Ngữ Pháp 45 giây", targetCount: 1, currentCount: 0, rewardXp: 90, icon: "❓", gameType: "true-false" },
+  { id: "quest_3", title: "Ghép đúng 2 câu hoàn chỉnh trong Bắt Chữ Hoàn Câu", targetCount: 2, currentCount: 0, rewardXp: 75, icon: "✍️", gameType: "sentence-builder" },
+  { id: "quest_4", title: "Quay 1 lượt Vòng Quay Tri Thức điểm danh tối", targetCount: 1, currentCount: 0, rewardXp: 50, icon: "🎡", gameType: "lucky-wheel" },
 ];
 
 export const WORD_SCRAMBLE_WORDS = [
   { word: "DUNGCAM", display: "DŨNG CẢM", hint: "Từ chỉ người gan dạ, không sợ hiểm nguy (phân biệt d/gi/r)", subject: "Tiếng Việt" },
   { word: "CHAMCHI", display: "CHĂM CHỈ", hint: "Đức tính siêng năng, cần cù học bài mỗi ngày", subject: "Tiếng Việt" },
-  { word: "TRUNGDUNG", display: "TRUNG THỰC", hint: "Phẩm chất thật thà, không gian dối (phân biệt tr/ch)", subject: "Tiếng Việt" },
+  { word: "TRUNGTHUC", display: "TRUNG THỰC", hint: "Phẩm chất thật thà, không gian dối (phân biệt tr/ch)", subject: "Tiếng Việt" },
   { word: "XANHBIEC", display: "XANH BIẾC", hint: "Từ gợi tả sắc xanh trong trẻo của vòm trời (phân biệt s/x)", subject: "Tiếng Việt" },
   { word: "SUOINGUON", display: "SUỐI NGUỒN", hint: "Nơi khởi nguồn dòng nước ngọt ngào (phân biệt s/x)", subject: "Tiếng Việt" },
   { word: "RUONGDONG", display: "RUỘNG ĐỒNG", hint: "Nơi người nông dân một nắng hai sương cấy lúa", subject: "Tiếng Việt" },
@@ -186,13 +186,119 @@ export const TRUE_FALSE_QUESTIONS = [
   { question: "Trong câu cảm thán, người ta thường dùng các từ bộc lộ cảm xúc như: 'Ôi!', 'A!', 'Trời ơi!'.", isTrue: true, explanation: "Đúng! Câu cảm thán luôn có các thán từ bộc lộ cảm xúc." },
 ];
 
-export const NUMBER_PUZZLE_EQUATIONS = [
-  { template: "[ ? ] + 25 = 60", missing: 35, options: [30, 35, 40, 45], hint: "Lấy 60 trừ đi 25" },
-  { template: "8 × [ ? ] = 72", missing: 9, options: [7, 8, 9, 12], hint: "Nhẩm bảng cửu chương 8" },
-  { template: "100 - [ ? ] = 37", missing: 63, options: [53, 63, 73, 67], hint: "100 trừ 37 bằng bao nhiêu?" },
-  { template: "[ ? ] ÷ 6 = 12", missing: 72, options: [60, 66, 72, 84], hint: "Nhân 12 với 6" },
-  { template: "45 + [ ? ] = 100", missing: 55, options: [45, 50, 55, 65], hint: "Lấy 100 trừ 45" },
-  { template: "15 × [ ? ] = 45", missing: 3, options: [2, 3, 4, 5], hint: "15 nhân mấy bằng 45?" },
+export interface SentenceBuilderItem {
+  id: string;
+  correctSentence: string;
+  shuffledTokens: string[];
+  hint: string;
+  category: "Từ & Câu" | "Thành Ngữ" | "Biện Pháp Tu Từ";
+}
+
+export const SENTENCE_BUILDER_DATA: SentenceBuilderItem[] = [
+  {
+    id: "sent_1",
+    correctSentence: "Em chăm chỉ học bài ở nhà mỗi tối.",
+    shuffledTokens: ["ở nhà", "Em", "học bài", "chăm chỉ", "mỗi tối."],
+    hint: "Sắp xếp theo thứ tự: Chủ ngữ -> Hoạt động -> Địa điểm -> Thời gian",
+    category: "Từ & Câu",
+  },
+  {
+    id: "sent_2",
+    correctSentence: "Những bông hoa hồng tỏa hương thơm ngát dưới nắng mai.",
+    shuffledTokens: ["dưới nắng mai.", "Những bông", "tỏa hương", "hoa hồng", "thơm ngát"],
+    hint: "Miêu tả hương sắc của đóa hoa hồng trong buổi sớm mai",
+    category: "Từ & Câu",
+  },
+  {
+    id: "sent_3",
+    correctSentence: "Có công mài sắt, có ngày nên kim.",
+    shuffledTokens: ["mài sắt,", "Có công", "nên kim.", "có ngày"],
+    hint: "Thành ngữ răn dạy lòng kiên trì, bền bỉ vượt khó",
+    category: "Thành Ngữ",
+  },
+  {
+    id: "sent_4",
+    correctSentence: "Vì trời mưa to nên đường làng trở nên lầy lội.",
+    shuffledTokens: ["mưa to", "Vì trời", "đường làng", "nên", "trở nên", "lầy lội."],
+    hint: "Cặp quan hệ từ Vì ... nên ... biểu thị quan hệ nguyên nhân - kết quả",
+    category: "Từ & Câu",
+  },
+  {
+    id: "sent_5",
+    correctSentence: "Bác đồng hồ cần mẫn tích tắc báo từng giây phút.",
+    shuffledTokens: ["cần mẫn", "từng giây phút.", "báo", "Bác đồng hồ", "tích tắc"],
+    hint: "Câu sử dụng biện pháp Nhân hóa gọi đồng hồ bằng Bác",
+    category: "Biện Pháp Tu Từ",
+  },
+  {
+    id: "sent_6",
+    correctSentence: "Uống nước nhớ nguồn là truyền thống tốt đẹp của dân tộc.",
+    shuffledTokens: ["nhớ nguồn", "Uống nước", "là truyền thống", "của dân tộc.", "tốt đẹp"],
+    hint: "Câu tục ngữ nhắc nhở con cháu luôn nhớ về cội nguồn tổ tiên",
+    category: "Thành Ngữ",
+  },
+];
+
+export interface LuckyWheelSector {
+  id: string;
+  label: string;
+  color: string;
+  rewardXp: number;
+  type: "quiz" | "bonus" | "double";
+  description: string;
+}
+
+export const LUCKY_WHEEL_SECTORS: LuckyWheelSector[] = [
+  { id: "sec_1", label: "Từ Loại +60 XP", color: "#6366f1", rewardXp: 60, type: "quiz", description: "Trả lời câu hỏi Danh/Động/Tính từ để nhận 60 XP" },
+  { id: "sec_2", label: "Quà Tặng +50 XP", color: "#10b981", rewardXp: 50, type: "bonus", description: "May mắn nhận ngay 50 XP không cần làm bài!" },
+  { id: "sec_3", label: "Chính Tả +80 XP", color: "#f59e0b", rewardXp: 80, type: "quiz", description: "Thử thách tr/ch, s/x để nhận 80 XP" },
+  { id: "sec_4", label: "Rương Vàng +100 XP", color: "#ec4899", rewardXp: 100, type: "bonus", description: "Mở Rương Báu Hoàng Gia nhận 100 XP cực lớn!" },
+  { id: "sec_5", label: "Ca Dao +70 XP", color: "#8b5cf6", rewardXp: 70, type: "quiz", description: "Điền thành ngữ ca dao để nhận 70 XP" },
+  { id: "sec_6", label: "May Mắn +30 XP", color: "#06b6d4", rewardXp: 30, type: "bonus", description: "Nhận 30 XP điểm danh chăm chỉ" },
+];
+
+export interface VocabularyItem {
+  id: string;
+  word: string;
+  category: "Từ loại" | "Chính tả" | "Thành ngữ" | "Biện pháp tu từ" | "Từ đồng nghĩa";
+  definition: string;
+  exampleSentence: string;
+  dateLearned: string;
+}
+
+export const DEFAULT_VOCABULARY_NOTES: VocabularyItem[] = [
+  {
+    id: "vocab_1",
+    word: "Cần cù",
+    category: "Từ đồng nghĩa",
+    definition: "Chăm chỉ, siêng năng làm việc hoặc học tập một cách kiên trì, không quản ngại khó khăn.",
+    exampleSentence: "Bạn Minh Anh cần cù ôn bài mỗi tối nên đạt điểm 10 môn Tiếng Việt.",
+    dateLearned: "Hôm nay",
+  },
+  {
+    id: "vocab_2",
+    word: "Lá lành đùm lá rách",
+    category: "Thành ngữ",
+    definition: "Tinh thần tương thân tương ái, người có điều kiện giúp đỡ người gặp khó khăn hoạn nạn.",
+    exampleSentence: "Nhà trường phát động phong trào lá lành đùm lá rách ủng hộ đồng bào bão lũ.",
+    dateLearned: "Hôm qua",
+  },
+  {
+    id: "vocab_3",
+    word: "Lung linh",
+    category: "Từ loại",
+    definition: "Từ láy tượng hình gợi tả ánh sáng phản chiếu lấp lánh, rung rinh mềm mại và đẹp mắt.",
+    exampleSentence: "Những giọt sương mai đọng trên cánh hoa lung linh dưới ánh nắng sớm.",
+    dateLearned: "3 ngày trước",
+  },
+  {
+    id: "vocab_4",
+    word: "Chân thật",
+    category: "Chính tả",
+    definition: "Phân biệt âm đầu ch/tr. 'Chân thật' viết bằng ch, biểu thị sự thật thà, không giả dối.",
+    exampleSentence: "Đức tính chân thật luôn được thầy cô và bạn bè tin yêu quý trọng.",
+    dateLearned: "4 ngày trước",
+  },
 ];
 
 export const SAMPLE_STUDENTS: StudentProfile[] = [
@@ -206,7 +312,7 @@ export const SAMPLE_STUDENTS: StudentProfile[] = [
     xp: 2850,
     level: 7,
     streak: 6,
-    badges: ["first_quiz", "streak_3", "math_master", "perfect_score"],
+    badges: ["first_quiz", "streak_3", "vietnamese_master", "perfect_score"],
     completedQuizzes: 24,
     accuracy: 92,
   },

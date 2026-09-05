@@ -471,13 +471,13 @@ export default function TeacherPage() {
               sound.playClick();
               setActiveTab("topics");
             }}
-            className={`px-5 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 transition whitespace-nowrap ${
+            className={`px-4 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition whitespace-nowrap ${
               activeTab === "topics"
-                ? "bg-purple-600 text-white shadow-md"
-                : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                ? "bg-indigo-600 text-white shadow-xs"
+                : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
             }`}
           >
-            <BookOpen className="w-4 h-4 text-purple-500" /> 🇻🇳 Soạn Đề Theo Chủ Đề ({vnTopics.length})
+            <BookOpen className="w-4 h-4 text-indigo-500" /> Chuyên Đề Ôn Tập ({vnTopics.length})
           </button>
 
           <button
@@ -485,13 +485,13 @@ export default function TeacherPage() {
               sound.playClick();
               setActiveTab("students");
             }}
-            className={`px-5 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 transition whitespace-nowrap ${
+            className={`px-4 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition whitespace-nowrap ${
               activeTab === "students"
-                ? "bg-emerald-600 text-white shadow-md"
-                : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
             }`}
           >
-            <Users className="w-4 h-4" /> Quản Lý Lớp & Học Sinh ({students.length})
+            <Users className="w-4 h-4" /> Quản Lý Lớp & Thẻ QR ({students.length})
           </button>
 
           <button
@@ -499,13 +499,13 @@ export default function TeacherPage() {
               sound.playClick();
               setActiveTab("ai-quiz");
             }}
-            className={`px-5 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 transition whitespace-nowrap ${
+            className={`px-4 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition whitespace-nowrap ${
               activeTab === "ai-quiz"
-                ? "bg-spark-600 text-white shadow-md"
-                : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                ? "bg-purple-600 text-white shadow-xs"
+                : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
             }`}
           >
-            <BrainCircuit className="w-4 h-4 text-spark-500" /> 🤖 Trợ Lý AI Soạn Đề
+            <BrainCircuit className="w-4 h-4 text-purple-500" /> Trợ Lý AI Soạn Đề
           </button>
 
           <button
@@ -513,10 +513,10 @@ export default function TeacherPage() {
               sound.playClick();
               setActiveTab("analytics");
             }}
-            className={`px-5 py-2.5 rounded-2xl font-bold text-sm flex items-center gap-2 transition whitespace-nowrap ${
+            className={`px-4 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition whitespace-nowrap ${
               activeTab === "analytics"
-                ? "bg-slate-800 text-white shadow-md"
-                : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                ? "bg-slate-800 text-white shadow-xs"
+                : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
             }`}
           >
             <FileSpreadsheet className="w-4 h-4" /> Báo Cáo & Xuất File

@@ -1,4 +1,12 @@
-import { StudentProfile, SAMPLE_STUDENTS, VietnameseTopic, SAMPLE_VIETNAMESE_TOPICS, Question } from "./data";
+import {
+  StudentProfile,
+  SAMPLE_STUDENTS,
+  VietnameseTopic,
+  SAMPLE_VIETNAMESE_TOPICS,
+  Question,
+  VocabularyItem,
+  DEFAULT_VOCABULARY_NOTES,
+} from "./data";
 
 const CLASS_STORAGE_KEY = "eduspark_class_roster";
 const TOPICS_STORAGE_KEY = "eduspark_vn_topics";
@@ -298,5 +306,37 @@ export function deleteVietnameseQuestion(id: string) {
   const current = getVietnameseQuestions();
   const updated = current.filter((q) => q.id !== id);
   saveVietnameseQuestions(updated);
+}
+
+/* VOCABULARY NOTEBOOK */
+const VOCABULARY_STORAGE_KEY = "eduspark_vocabulary_notes";
+
+export function getVocabularyNotes(): VocabularyItem[] {
+  if (typeof window === "undefined") return DEFAULT_VOCABULARY_NOTES;
+  const saved = localStorage.getItem(VOCABULARY_STORAGE_KEY);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch {
+      return DEFAULT_VOCABULARY_NOTES;
+    }
+  }
+  localStorage.setItem(VOCABULARY_STORAGE_KEY, JSON.stringify(DEFAULT_VOCABULARY_NOTES));
+  return DEFAULT_VOCABULARY_NOTES;
+}
+
+export function saveVocabularyNotes(notes: VocabularyItem[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(VOCABULARY_STORAGE_KEY, JSON.stringify(notes));
+  window.dispatchEvent(new Event("eduspark_vocabulary_change"));
+}
+
+export function addVocabularyNote(newNote: VocabularyItem) {
+  const current = getVocabularyNotes();
+  const exists = current.some((n) => n.word.toLowerCase() === newNote.word.toLowerCase());
+  if (!exists) {
+    const updated = [newNote, ...current];
+    saveVocabularyNotes(updated);
+  }
 }
 

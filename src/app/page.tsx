@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/lib/authStore";
 import { sound } from "@/lib/soundEffects";
-import { BADGES, calculateLevel, DEFAULT_DAILY_QUESTS, StudentProfile, VietnameseTopic } from "@/lib/data";
+import { BADGES, calculateLevel, StudentProfile, VietnameseTopic } from "@/lib/data";
 import { getClassStudents, getActiveVietnameseTopic } from "@/lib/dataStore";
 import SpeedQuizGame from "@/components/games/SpeedQuizGame";
 import MemoryFlipGame from "@/components/games/MemoryFlipGame";
@@ -12,6 +12,9 @@ import WordScrambleGame from "@/components/games/WordScrambleGame";
 import TrueFalseGame from "@/components/games/TrueFalseGame";
 import SortingBasketGame from "@/components/games/SortingBasketGame";
 import LaserMatchGame from "@/components/games/LaserMatchGame";
+import SentenceBuilderGame from "@/components/games/SentenceBuilderGame";
+import LuckyWheelGame from "@/components/games/LuckyWheelGame";
+import VocabularyNotebookModal from "@/components/VocabularyNotebookModal";
 import AuthModal from "@/components/AuthModal";
 import AvatarModal from "@/components/AvatarModal";
 import {
@@ -22,9 +25,6 @@ import {
   BookOpen,
   ArrowRight,
   CheckCircle,
-  QrCode,
-  CheckCircle2,
-  Gift
 } from "lucide-react";
 
 type GameType =
@@ -33,17 +33,21 @@ type GameType =
   | "laser-match"
   | "word-scramble"
   | "true-false"
-  | "memory-flip";
+  | "memory-flip"
+  | "sentence-builder"
+  | "lucky-wheel";
+
+type CategoryFilter = "all" | "speed" | "classify" | "match" | "sentence" | "wheel";
 
 export default function HomePage() {
-  const { student, addStudentXp } = useAuth();
+  const { student } = useAuth();
   const [classList, setClassList] = useState<StudentProfile[]>([]);
   const [activeGame, setActiveGame] = useState<GameType | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
-  const [quests] = useState(DEFAULT_DAILY_QUESTS);
-  const [claimedQuests, setClaimedQuests] = useState<string[]>([]);
+  const [vocabModalOpen, setVocabModalOpen] = useState(false);
   const [activeTopic, setActiveTopic] = useState<VietnameseTopic | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
 
   useEffect(() => {
     const update = () => setClassList(getClassStudents());
@@ -69,146 +73,229 @@ export default function HomePage() {
     setActiveGame(game);
   };
 
+  // Game List Metadata
+  const gamesList = [
+    {
+      id: "speed-quiz" as GameType,
+      category: "speed",
+      title: "Vua Tiếng Việt",
+      subtitle: "Luyện Từ & Câu • 15s/câu",
+      description: "Trắc nghiệm phản xạ kiến thức theo đúng chuyên đề cô giáo đang giao. Rèn luyện sự tập trung và tư duy ngôn ngữ nhanh.",
+      icon: "⚡",
+      iconBg: "bg-indigo-50 text-indigo-600 border-indigo-100",
+      tag: "Trắc nghiệm tốc độ",
+      badge: "Cô Giao Ôn Tập",
+      reward: "+60 XP",
+    },
+    {
+      id: "sorting-basket" as GameType,
+      category: "classify",
+      title: "Kéo Thả Từ Loại",
+      subtitle: "Danh từ, Động từ, Tính từ",
+      description: "Thao tác kéo thả trực quan để phân loại từ ngữ vào đúng giỏ tri thức (từ đơn/ghép/láy, tu từ so sánh/nhân hóa).",
+      icon: "🧺",
+      iconBg: "bg-purple-50 text-purple-600 border-purple-100",
+      tag: "Tương tác kéo thả",
+      badge: "Hiểu sâu bản chất",
+      reward: "+80 XP",
+    },
+    {
+      id: "sentence-builder" as GameType,
+      category: "sentence",
+      title: "Bắt Chữ Hoàn Câu",
+      subtitle: "Trật tự câu & Dấu câu",
+      description: "Sắp xếp các cụm từ bị xáo trộn thành câu văn hoàn chỉnh, đúng trật tự ngữ pháp và quy tắc dấu câu tiếng Việt.",
+      icon: "✍️",
+      iconBg: "bg-sky-50 text-sky-600 border-sky-100",
+      tag: "Ghép câu hoàn chỉnh",
+      badge: "Kỹ năng đặt câu",
+      reward: "+75 XP",
+    },
+    {
+      id: "laser-match" as GameType,
+      category: "match",
+      title: "Nối Cột Từ Ngữ Laser",
+      subtitle: "Đồng nghĩa, Trái nghĩa & Ca dao",
+      description: "Nối 2 cột khái niệm tương ứng: cặp từ đồng nghĩa, trái nghĩa, thành ngữ tục ngữ dân gian và từ Hán - Việt.",
+      icon: "🔗",
+      iconBg: "bg-emerald-50 text-emerald-600 border-emerald-100",
+      tag: "Nối cặp khái niệm",
+      badge: "Mở rộng vốn từ",
+      reward: "+70 XP",
+    },
+    {
+      id: "word-scramble" as GameType,
+      category: "sentence",
+      title: "Thánh Chính Tả",
+      subtitle: "Phân biệt tr/ch, s/x, d/gi",
+      description: "Khôi phục lại các từ ngữ bị xáo trộn chữ cái, rèn luyện thói quen viết đúng chính tả các âm vần dễ lẫn.",
+      icon: "🔤",
+      iconBg: "bg-amber-50 text-amber-600 border-amber-100",
+      tag: "Rèn chữ & chính tả",
+      badge: "Quy tắc ngữ âm",
+      reward: "+70 XP",
+    },
+    {
+      id: "true-false" as GameType,
+      category: "speed",
+      title: "Đúng Hay Sai Tiếng Việt",
+      subtitle: "Thử thách 45 giây phản xạ",
+      description: "Nhận định nhanh các quy tắc ngữ pháp, dấu câu và cấu trúc câu tiếng Việt trong nhịp độ hồi hộp, cuốn hút.",
+      icon: "❓",
+      iconBg: "bg-rose-50 text-rose-600 border-rose-100",
+      tag: "Phán đoán siêu tốc",
+      badge: "Kiểm tra phản xạ",
+      reward: "+90 XP",
+    },
+    {
+      id: "memory-flip" as GameType,
+      category: "match",
+      title: "Lật Thẻ Ghép Đôi Từ Ngữ",
+      subtitle: "Rèn luyện trí nhớ lâu dài",
+      description: "Lật thẻ tìm cặp từ đồng nghĩa, từ trái nghĩa hoặc ghép tranh minh họa tương ứng. Tăng khả năng ghi nhớ dài hạn.",
+      icon: "🃏",
+      iconBg: "bg-teal-50 text-teal-600 border-teal-100",
+      tag: "Trí nhớ thị giác",
+      badge: "Ghi nhớ sâu",
+      reward: "+65 XP",
+    },
+    {
+      id: "lucky-wheel" as GameType,
+      category: "wheel",
+      title: "Vòng Quay Tri Thức",
+      subtitle: "Thử thách điểm danh mỗi tối",
+      description: "Quay ngẫu nhiên các ô câu hỏi chuyên đề để mở rương điểm thưởng XP và nhận quà tặng may mắn.",
+      icon: "🎡",
+      iconBg: "bg-orange-50 text-orange-600 border-orange-100",
+      tag: "Quà tặng may mắn",
+      badge: "Điểm danh hàng ngày",
+      reward: "Đến +100 XP",
+    },
+  ];
+
+  const filteredGames = gamesList.filter(
+    (g) => selectedCategory === "all" || g.category === selectedCategory
+  );
+
   return (
-    <div className="min-h-screen flex flex-col selection:bg-spark-500 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-slate-50/40 text-slate-800 selection:bg-indigo-600 selection:text-white">
       <Navbar />
 
       <main className="flex-1">
         {/* HERO SECTION */}
-        <section className="relative overflow-hidden pt-8 pb-16 lg:pt-14 lg:pb-24">
+        <section className="pt-8 pb-14 lg:pt-14 lg:pb-20 border-b border-slate-200/60 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-              {/* Left Column */}
+              {/* Left Column: Heading & Value Proposition */}
               <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-spark-100 border border-spark-200 text-spark-800 text-xs sm:text-sm font-extrabold shadow-sm animate-pulse-glow">
-                  <Sparkles className="w-4 h-4 text-amber-500" />
-                  <span>🇻🇳 Vũ Trụ Ôn Tập Tiếng Việt & Ngữ Văn Gamified Cấp 1 & 2</span>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Nền tảng tự học Gamified môn Tiếng Việt dành cho học sinh Cấp 1 & 2</span>
                 </div>
 
-                <h1 className="text-4xl sm:text-6xl font-black font-heading text-slate-900 tracking-tight leading-[1.15]">
-                  Học Tốt Tiếng Việt, <br />
-                  <span className="bg-gradient-to-r from-spark-600 via-indigo-600 to-berry-500 bg-clip-text text-transparent">
-                    Đua Top Tri Thức
-                  </span>{" "}
-                  Mỗi Ngày! ⚡
+                <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-slate-900 leading-[1.2]">
+                  Tự Học Tiếng Việt Chủ Động, <br />
+                  <span className="text-indigo-600">Vững Vàng Ngữ Pháp</span> Mỗi Tối Tại Nhà
                 </h1>
 
-                <p className="text-base sm:text-lg text-slate-600 font-medium max-w-xl mx-auto lg:mx-0">
-                  Nắm chắc từ loại, cấu tạo từ, mở rộng vốn từ đồng nghĩa - trái nghĩa, sửa lỗi chính tả và làm chủ thành ngữ tục ngữ qua hệ thống mini-games vui nhộn chuẩn SGK!
+                <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-xl mx-auto lg:mx-0 font-normal">
+                  Hệ thống bài tập cô giáo giao kết hợp 8 trò chơi tương tác giúp các em ghi nhớ sâu từ loại, cấu tạo từ, phân biệt chuẩn chính tả và làm chủ thành ngữ tục ngữ mà không hề nhàm chán.
                 </p>
 
-                {/* ASSIGNED VIETNAMESE TOPIC BANNER */}
+                {/* TEACHER ASSIGNED TOPIC NOTIFICATION CARD */}
                 {activeTopic && (
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-spark-700 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-2 border-purple-300">
-                    <div className="flex items-center gap-3 text-left">
-                      <span className="text-3xl">{activeTopic.icon}</span>
+                  <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-xl shadow-xs border border-indigo-100">
+                        {activeTopic.icon}
+                      </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-900 text-[10px] font-black uppercase tracking-wider">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-600 text-white">
                             Cô Mai Lan Giao Ôn Tập
                           </span>
-                          <span className="text-xs font-bold text-purple-200">
+                          <span className="text-xs text-slate-500 font-medium">
                             Lớp {activeTopic.grade} • {activeTopic.categoryName}
                           </span>
                         </div>
-                        <h4 className="text-base sm:text-lg font-black font-heading text-white">
+                        <h4 className="font-bold text-slate-900 text-sm sm:text-base mt-0.5">
                           {activeTopic.name}
                         </h4>
-                        <p className="text-xs text-purple-100 line-clamp-1">
+                        <p className="text-xs text-slate-600 line-clamp-1">
                           {activeTopic.description}
                         </p>
                       </div>
                     </div>
+
                     <button
                       onClick={() => handleStartGame("speed-quiz")}
-                      className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition flex items-center gap-1.5 shadow-md shrink-0"
+                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 shrink-0"
                     >
-                      Ôn Tập Ngay ⚡
+                      Vào Ôn Tập Ngay <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 )}
 
-                {/* Call to action buttons */}
-                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3.5 pt-2">
-                  <button
-                    onClick={() => handleStartGame("speed-quiz")}
-                    className="px-7 py-4 text-white font-black text-lg rounded-2xl btn-game-purple flex items-center gap-2.5 shadow-xl"
-                  >
-                    <Gamepad2 className="w-6 h-6" /> Vào Chơi Ngay
-                  </button>
-
+                {/* Action Buttons */}
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-2">
                   <a
                     href="#games"
                     onClick={() => sound.playClick()}
-                    className="px-6 py-4 bg-white hover:bg-slate-100 text-slate-800 font-extrabold text-base rounded-2xl border-2 border-slate-200 shadow-md transition flex items-center gap-2"
+                    className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-xs transition flex items-center gap-2"
                   >
-                    <BookOpen className="w-5 h-5 text-purple-600" /> Chọn Trò Chơi Ôn Tập
+                    <Gamepad2 className="w-4 h-4" /> Khám Phá 8 Trò Chơi
                   </a>
-                </div>
 
-                {/* Key badges row */}
-                <div className="grid grid-cols-3 gap-3 pt-6 max-w-lg mx-auto lg:mx-0">
-                  <div className="p-3 bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200 shadow-sm text-center">
-                    <span className="text-xl sm:text-2xl block mb-0.5">🇻🇳</span>
-                    <span className="text-xs font-bold text-slate-800 block">Tiếng Việt SGK</span>
-                    <span className="text-[10px] text-slate-400">Lớp 1 đến Lớp 9</span>
-                  </div>
-                  <div className="p-3 bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200 shadow-sm text-center">
-                    <span className="text-xl sm:text-2xl block mb-0.5">🪪</span>
-                    <span className="text-xs font-bold text-slate-800 block">Mã Học Sinh</span>
-                    <span className="text-[10px] text-slate-400">Không lo quên pass</span>
-                  </div>
-                  <div className="p-3 bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200 shadow-sm text-center">
-                    <span className="text-xl sm:text-2xl block mb-0.5">🤖</span>
-                    <span className="text-xs font-bold text-slate-800 block">Trợ Lý AI</span>
-                    <span className="text-[10px] text-slate-400">Cô soạn đề theo chủ đề</span>
-                  </div>
+                  <button
+                    onClick={() => {
+                      sound.playClick();
+                      setVocabModalOpen(true);
+                    }}
+                    className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition flex items-center gap-2"
+                  >
+                    <BookOpen className="w-4 h-4 text-emerald-600" /> Sổ Tay Từ Vựng
+                  </button>
                 </div>
               </div>
 
-              {/* Right Column: Interactive Game Showcase Card */}
-              <div className="lg:col-span-5 relative">
-                <div className="relative mx-auto max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border-4 border-spark-200">
-                  {/* Badge floating */}
-                  <div className="absolute -top-4 -right-3 bg-amber-400 text-amber-950 font-black text-xs px-3.5 py-1.5 rounded-full shadow-md flex items-center gap-1 animate-wiggle">
-                    <Flame className="w-4 h-4 fill-amber-500" /> HOT TRONG TUẦN
+              {/* Right Column: Clean Interactive Preview Card */}
+              <div className="lg:col-span-5">
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4 max-w-md mx-auto">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">
+                        ⚡
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">Vua Tiếng Việt</h4>
+                        <span className="text-[11px] text-slate-400">Câu hỏi luyện tập mẫu</span>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                      Chuyên đề tuần
+                    </span>
                   </div>
 
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="w-12 h-12 rounded-2xl bg-spark-100 flex items-center justify-center text-2xl">
-                      ⚡
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-2.5">
+                    <div className="flex justify-between text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                      <span>Câu 1/6 • Phân loại từ</span>
+                      <span className="text-indigo-600 font-bold">15s</span>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-black font-heading text-slate-900">
-                        Vua Tiếng Việt: Luyện Từ & Câu
-                      </h3>
-                      <p className="text-xs text-slate-500 font-bold">
-                        Chuyên đề: {activeTopic?.name || "Từ Loại Tiếng Việt"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Sample Interactive Question Card */}
-                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 mb-4 space-y-3">
-                    <div className="flex justify-between text-xs font-bold text-slate-400 uppercase">
-                      <span>Câu 1/6 • Phân Loại Từ</span>
-                      <span className="text-spark-600 font-black">15s</span>
-                    </div>
-                    <p className="font-extrabold text-slate-800 text-base">
+                    <p className="font-bold text-slate-800 text-sm leading-snug">
                       Trong câu &ldquo;Những cánh chim bay lượn trên bầu trời xanh&rdquo;, từ &ldquo;bay lượn&rdquo; thuộc từ loại nào?
                     </p>
-                    <div className="grid grid-cols-2 gap-2 text-xs font-bold">
-                      <div className="p-2.5 rounded-xl bg-emerald-50 border-2 border-emerald-400 text-emerald-900 flex items-center justify-between">
+                    <div className="grid grid-cols-2 gap-2 text-xs font-semibold pt-1">
+                      <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-800 flex items-center justify-between">
                         <span>A. Động từ</span>
-                        <CheckCircle className="w-4 h-4 text-emerald-600" />
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
                       </div>
-                      <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600">
+                      <div className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600">
                         <span>B. Danh từ</span>
                       </div>
-                      <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600">
+                      <div className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600">
                         <span>C. Tính từ</span>
                       </div>
-                      <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600">
+                      <div className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600">
                         <span>D. Quan hệ từ</span>
                       </div>
                     </div>
@@ -216,9 +303,9 @@ export default function HomePage() {
 
                   <button
                     onClick={() => handleStartGame("speed-quiz")}
-                    className="w-full py-3.5 text-white font-black text-base rounded-2xl btn-game-purple flex items-center justify-center gap-2 shadow-md"
+                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5"
                   >
-                    Bắt Đầu Ôn Tập Ngay ⚡ <ArrowRight className="w-4 h-4" />
+                    Bắt Đầu Thử Thách Ngay <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -226,444 +313,184 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* STUDENT STATUS OR QUICK LOGIN BAR */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
-          {student ? (
-            <div className="bg-gradient-to-r from-spark-600 via-indigo-600 to-berry-600 rounded-3xl p-6 sm:p-7 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-4 text-center sm:text-left">
-                <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-4xl shadow-inner">
+        {/* STUDENT STATUS BAR (When logged in) */}
+        {student && (
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-2xl">
                   {student.avatar}
                 </div>
                 <div>
-                  <div className="flex items-center justify-center sm:justify-start gap-2">
-                    <h3 className="text-xl sm:text-2xl font-black font-heading">{student.name}</h3>
-                    <span className="px-2 py-0.5 bg-amber-400 text-amber-950 text-xs font-black rounded-md">
-                      Mã: {student.studentId}
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-900 text-base">{student.name}</h3>
+                    <span className="px-2 py-0.2 rounded bg-indigo-600 text-white text-[10px] font-bold">
+                      {student.studentId}
                     </span>
                   </div>
-                  <p className="text-spark-100 text-xs sm:text-sm font-medium mt-0.5">
-                    {student.className} • {studentLevelData?.title} (Cấp {student.level})
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    {student.className} • Cấp độ {student.level} ({studentLevelData?.title})
                   </p>
                 </div>
               </div>
 
-              {/* XP Progress Bar */}
-              <div className="flex-1 max-w-md w-full bg-white/10 p-4 rounded-2xl backdrop-blur-md">
-                <div className="flex justify-between text-xs font-bold mb-1.5">
-                  <span className="text-spark-100">Tiến Độ Lên Cấp Kế Tiếp</span>
-                  <span className="text-amber-300 font-extrabold">{student.xp} XP</span>
+              {/* Progress & Stats */}
+              <div className="flex items-center gap-6 text-xs font-semibold">
+                <div className="text-right">
+                  <span className="text-slate-400 block text-[10px] uppercase">Điểm tích lũy</span>
+                  <span className="text-amber-600 font-bold text-sm">⚡ {student.xp} XP</span>
                 </div>
-                <div className="w-full bg-black/20 h-3 rounded-full overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-amber-400 to-yellow-300 h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${Math.min(
-                        100,
-                        (studentLevelData?.currentXp || 50) / ((studentLevelData?.nextLevelXp || 500) / 100)
-                      )}%`,
-                    }}
-                  />
+                <div className="text-right">
+                  <span className="text-slate-400 block text-[10px] uppercase">Chuỗi ngày học</span>
+                  <span className="text-orange-500 font-bold text-sm flex items-center">
+                    <Flame className="w-3.5 h-3.5 mr-0.5" /> {student.streak} ngày
+                  </span>
                 </div>
-              </div>
-
-              {/* Streak info & Avatar Customize */}
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="flex items-center gap-2 bg-white/10 px-5 py-3 rounded-2xl backdrop-blur-md">
-                  <Flame className="w-8 h-8 text-amber-400 fill-amber-400 animate-bounce" />
-                  <div className="text-left">
-                    <span className="block text-2xl font-black leading-none">{student.streak} Ngày</span>
-                    <span className="text-[11px] font-bold text-amber-200 uppercase">Chuỗi Giữ Vững</span>
-                  </div>
-                </div>
-
                 <button
                   onClick={() => {
                     sound.playClick();
                     setAvatarModalOpen(true);
                   }}
-                  className="px-4 py-3 bg-white/20 hover:bg-white/30 text-white rounded-2xl text-xs font-black transition flex items-center gap-1.5 shadow-sm whitespace-nowrap"
+                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
                 >
-                  <span>🎨</span> Đổi Avatar
+                  Đổi Linh Vật
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="bg-white rounded-3xl p-6 sm:p-7 border-2 border-spark-200 shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-4 text-center sm:text-left">
-                <div className="w-14 h-14 rounded-2xl bg-spark-100 text-spark-600 flex items-center justify-center text-2xl">
-                  🦊
-                </div>
-                <div>
-                  <h3 className="text-lg sm:text-xl font-black font-heading text-slate-800">
-                    Em Chưa Đăng Nhập Tài Khoản Học Sinh?
-                  </h3>
-                  <p className="text-xs sm:text-sm text-slate-500 font-medium">
-                    Nhập mã học sinh để lưu điểm thi đua, nhận huy hiệu và thăng cấp!
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    sound.playClick();
-                    setAuthModalOpen(true);
-                  }}
-                  className="px-6 py-3 text-white font-black text-sm rounded-xl btn-game-purple shadow-md flex items-center gap-2"
-                >
-                  <QrCode className="w-4 h-4" /> Đăng Nhập Mã HS / Quét QR
-                </button>
-              </div>
+          </section>
+        )}
+
+        {/* 8 VIETNAMESE GAMES HUB */}
+        <section id="games" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          {/* Section Header */}
+          <div className="text-center max-w-2xl mx-auto mb-8 space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold">
+              <Gamepad2 className="w-3.5 h-3.5" /> Kho Trò Chơi Tự Học Tiếng Việt
             </div>
-          )}
-
-          {/* DAILY QUESTS CHECKLIST */}
-          {student && (
-            <div className="mt-6 bg-white rounded-3xl p-6 border-2 border-slate-200 shadow-sm animate-fade-in">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-amber-100 rounded-xl text-amber-700">
-                    <Gift className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-base font-black text-slate-800 font-heading">
-                      Thử Thách Hàng Ngày (Daily Quests)
-                    </h4>
-                    <p className="text-xs text-slate-400 font-bold">
-                      Hoàn thành thử thách để nhận thêm điểm thưởng XP tăng cấp nhanh!
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {quests.map((q) => {
-                  const isClaimed = claimedQuests.includes(q.id);
-                  return (
-                    <div
-                      key={q.id}
-                      className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between hover:border-spark-200 transition"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-2xl">{q.icon}</span>
-                          <span className="text-xs font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
-                            +{q.rewardXp} XP
-                          </span>
-                        </div>
-                        <h5 className="font-extrabold text-xs text-slate-800 leading-snug">
-                          {q.title}
-                        </h5>
-                      </div>
-
-                      <button
-                        disabled={isClaimed}
-                        onClick={() => {
-                          if (isClaimed) return;
-                          sound.playVictory();
-                          addStudentXp(q.rewardXp);
-                          setClaimedQuests([...claimedQuests, q.id]);
-                        }}
-                        className={`mt-4 py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
-                          isClaimed
-                            ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                            : "btn-game-purple text-white shadow-sm"
-                        }`}
-                      >
-                        {isClaimed ? (
-                          <>
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Đã Nhận Thưởng
-                          </>
-                        ) : (
-                          "Bấm Nhận Thưởng 🎁"
-                        )}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* 6 VIETNAMESE REVIEW GAMES HUB */}
-        <section id="games" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center max-w-2xl mx-auto mb-10">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-black uppercase tracking-wider mb-2">
-              <Gamepad2 className="w-4 h-4 text-purple-600" /> VŨ TRỤ TRÒ CHƠI ÔN TẬP TIẾNG VIỆT
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-black font-heading text-slate-900">
-              Góc Tự Học & Luyện Tập Tại Nhà
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              8 Trò Chơi Ôn Tập Ngôn Từ Mỗi Tối
             </h2>
-            <p className="text-slate-500 text-sm font-medium mt-2">
-              Bao quát toàn diện: Từ loại, Chính tả, Từ đồng nghĩa - trái nghĩa, Thành ngữ tục ngữ & Biện pháp tu từ
+            <p className="text-xs sm:text-sm text-slate-500">
+              Được thiết kế chuẩn mực: Từ loại, Chính tả, Đặt câu, Từ đồng nghĩa - trái nghĩa & Ca dao tục ngữ.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Game 1: Vua Tiếng Việt (Speed Quiz) */}
-            <div className="bg-white rounded-3xl p-6 border-2 border-spark-200 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
-              <div>
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-spark-600 to-indigo-500 text-white flex items-center justify-center text-3xl shadow-md mb-4 group-hover:scale-105 transition">
-                  ⚡
-                </div>
-                <span className="text-xs font-black text-spark-600 uppercase tracking-wider block mb-1">
-                  Đọc Hiểu & Ngữ Pháp • Lớp 1 - 9
-                </span>
-                <h3 className="text-2xl font-black font-heading text-slate-800 mb-2">
-                  Vua Tiếng Việt
-                </h3>
-                <p className="text-slate-500 text-sm font-medium leading-relaxed mb-4">
-                  Trắc nghiệm 15 giây theo đúng chuyên đề cô giáo giao. Tích hợp giọng đọc tự động và lời giải thích ngữ pháp chi tiết!
-                </p>
-                <div className="flex flex-wrap gap-2 mb-6">
-                  <span className="px-2.5 py-1 bg-spark-50 text-spark-700 rounded-lg text-xs font-bold">
-                    ⏱️ 15s/câu
-                  </span>
-                  <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold">
-                    🔥 Combo Streak
-                  </span>
-                  <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold">
-                    🔊 Đọc đề tự động
-                  </span>
-                </div>
-              </div>
+          {/* Category Filter Pills */}
+          <div className="flex flex-wrap items-center justify-center gap-1.5 mb-8">
+            {[
+              { id: "all", label: "Tất Cả (8)" },
+              { id: "speed", label: "Phản Xạ Nhanh" },
+              { id: "classify", label: "Kéo Thả Phân Loại" },
+              { id: "sentence", label: "Luyện Chữ & Câu" },
+              { id: "match", label: "Nối Cột & Trí Nhớ" },
+              { id: "wheel", label: "Vòng Quay May Mắn" },
+            ].map((cat) => (
               <button
-                onClick={() => handleStartGame("speed-quiz")}
-                className="w-full py-3.5 text-white font-black text-base rounded-2xl btn-game-purple shadow-md flex items-center justify-center gap-2"
+                key={cat.id}
+                onClick={() => {
+                  sound.playClick();
+                  setSelectedCategory(cat.id as CategoryFilter);
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition ${
+                  selectedCategory === cat.id
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
               >
-                Chơi Ngay ⚡
+                {cat.label}
               </button>
-            </div>
+            ))}
+          </div>
 
-            {/* Game 2: Sorting Basket (Kéo Thả Phân Loại Từ Loại) */}
-            <div className="bg-white rounded-3xl p-6 border-2 border-purple-300 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
-              <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[11px] font-black uppercase tracking-wider">
-                Yêu Thích 🌟
-              </div>
-              <div>
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-blue-600 text-white flex items-center justify-center text-3xl shadow-md mb-4 group-hover:scale-105 transition">
-                  🧺
-                </div>
-                <span className="text-xs font-black text-purple-600 uppercase tracking-wider block mb-1">
-                  Ngữ Pháp • Vận Động Trí Tuệ
-                </span>
-                <h3 className="text-2xl font-black font-heading text-slate-800 mb-2">
-                  Kéo Thả Từ Loại
-                </h3>
-                <p className="text-slate-500 text-sm font-medium leading-relaxed mb-4">
-                  Phân loại từ ngữ vào đúng các giỏ: Danh từ, Động từ, Tính từ, Từ láy, Từ ghép... Rèn khả năng nhận diện từ loại siêu tốc!
-                </p>
-                <div className="flex flex-wrap gap-2 mb-6">
-                  <span className="px-2.5 py-1 bg-purple-50 text-purple-700 rounded-lg text-xs font-bold">
-                    🧺 3 Giỏ phân loại
-                  </span>
-                  <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold">
-                    🏛️ Danh/Động/Tính
-                  </span>
-                  <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold">
-                    ⚡ Vận động vui mắt
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => handleStartGame("sorting-basket")}
-                className="w-full py-3.5 text-white font-black text-base rounded-2xl btn-game-purple shadow-md flex items-center justify-center gap-2"
+          {/* Games Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            {filteredGames.map((g) => (
+              <div
+                key={g.id}
+                className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group"
               >
-                Chơi Ngay 🧺
-              </button>
-            </div>
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`w-11 h-11 rounded-xl border flex items-center justify-center text-xl font-bold shadow-xs ${g.iconBg}`}>
+                      {g.icon}
+                    </div>
+                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                      {g.reward}
+                    </span>
+                  </div>
 
-            {/* Game 3: Laser Match (Nối Cột Từ Ngữ Laser) */}
-            <div className="bg-white rounded-3xl p-6 border-2 border-blue-300 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
-              <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[11px] font-black uppercase tracking-wider">
-                Mới Lạ ⚡
-              </div>
-              <div>
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 via-cyan-600 to-teal-500 text-white flex items-center justify-center text-3xl shadow-md mb-4 group-hover:scale-105 transition">
-                  🔗
-                </div>
-                <span className="text-xs font-black text-blue-600 uppercase tracking-wider block mb-1">
-                  Vốn Từ & Thành Ngữ • Liên Tưởng Sâu
-                </span>
-                <h3 className="text-2xl font-black font-heading text-slate-800 mb-2">
-                  Nối Cột Từ Ngữ Laser
-                </h3>
-                <p className="text-slate-500 text-sm font-medium leading-relaxed mb-4">
-                  Bắn tia laser nối 2 cột: Cặp từ đồng nghĩa, cặp từ trái nghĩa, và ghép các vế câu thành ngữ ca dao với ý nghĩa tương ứng!
-                </p>
-                <div className="flex flex-wrap gap-2 mb-6">
-                  <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold">
-                    ⚡ Tia laser neon
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 block mb-1">
+                    {g.tag}
                   </span>
-                  <span className="px-2.5 py-1 bg-cyan-50 text-cyan-700 rounded-lg text-xs font-bold">
-                    🔄 Đồng nghĩa - Trái nghĩa
-                  </span>
-                  <span className="px-2.5 py-1 bg-teal-50 text-teal-700 rounded-lg text-xs font-bold">
-                    📜 Thành ngữ dân gian
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => handleStartGame("laser-match")}
-                className="w-full py-3.5 text-white font-black text-base rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-md flex items-center justify-center gap-2"
-              >
-                Chơi Ngay 🔗
-              </button>
-            </div>
 
-            {/* Game 4: Word Scramble (Thánh Chính Tả) */}
-            <div className="bg-white rounded-3xl p-6 border-2 border-pink-200 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
-              <div>
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-pink-500 to-berry-600 text-white flex items-center justify-center text-3xl shadow-md mb-4 group-hover:scale-105 transition">
-                  🔤
-                </div>
-                <span className="text-xs font-black text-pink-600 uppercase tracking-wider block mb-1">
-                  Chính Tả & Vốn Từ • Rèn Luyện Chữ
-                </span>
-                <h3 className="text-2xl font-black font-heading text-slate-800 mb-2">
-                  Thánh Chính Tả
-                </h3>
-                <p className="text-slate-500 text-sm font-medium leading-relaxed mb-4">
-                  Sắp xếp các chữ cái xáo trộn thành từ ngữ chuẩn tiếng Việt. Phân biệt phụ âm đầu tr/ch, s/x, d/r/gi và dấu hỏi - ngã!
-                </p>
-                <div className="flex flex-wrap gap-2 mb-6">
-                  <span className="px-2.5 py-1 bg-pink-50 text-pink-700 rounded-lg text-xs font-bold">
-                    ✍️ Chuẩn chính tả
-                  </span>
-                  <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold">
-                    💡 Gợi ý ngữ nghĩa
-                  </span>
-                  <span className="px-2.5 py-1 bg-spark-50 text-spark-700 rounded-lg text-xs font-bold">
-                    🇻🇳 100% Tiếng Việt
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => handleStartGame("word-scramble")}
-                className="w-full py-3.5 text-white font-black text-base rounded-2xl btn-game-pink shadow-md flex items-center justify-center gap-2"
-              >
-                Chơi Ngay 🔤
-              </button>
-            </div>
+                  <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition">
+                    {g.title}
+                  </h3>
 
-            {/* Game 5: True or False Blitz (Đúng Hay Sai Tiếng Việt) */}
-            <div className="bg-white rounded-3xl p-6 border-2 border-indigo-200 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
-              <div>
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-spark-600 text-white flex items-center justify-center text-3xl shadow-md mb-4 group-hover:scale-105 transition">
-                  ❓
-                </div>
-                <span className="text-xs font-black text-indigo-600 uppercase tracking-wider block mb-1">
-                  Tư Duy Ngôn Ngữ • Phản Xạ 45s
-                </span>
-                <h3 className="text-2xl font-black font-heading text-slate-800 mb-2">
-                  Đúng Hay Sai Tiếng Việt
-                </h3>
-                <p className="text-slate-500 text-sm font-medium leading-relaxed mb-4">
-                  45 giây phản xạ chớp nhoáng: Nhận diện câu đúng ngữ pháp, quy tắc đặt dấu câu và biện pháp nghệ thuật So sánh - Nhân hóa!
-                </p>
-                <div className="flex flex-wrap gap-2 mb-6">
-                  <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold">
-                    ⏱️ 45s dồn dập
-                  </span>
-                  <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold">
-                    ✅ 2 Lựa chọn
-                  </span>
-                  <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold">
-                    ⚡ Combo siêu cao
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => handleStartGame("true-false")}
-                className="w-full py-3.5 text-white font-black text-base rounded-2xl btn-game-purple shadow-md flex items-center justify-center gap-2"
-              >
-                Chơi Ngay ❓
-              </button>
-            </div>
+                  <p className="text-xs font-medium text-slate-400 mt-0.5 mb-2">
+                    {g.subtitle}
+                  </p>
 
-            {/* Game 6: Memory Flip (Lật Thẻ Ghép Đôi Từ Vựng) */}
-            <div className="bg-white rounded-3xl p-6 border-2 border-mint-200 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
-              <div>
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center text-3xl shadow-md mb-4 group-hover:scale-105 transition">
-                  🃏
+                  <p className="text-xs text-slate-600 leading-relaxed line-clamp-3 mb-4 font-normal">
+                    {g.description}
+                  </p>
                 </div>
-                <span className="text-xs font-black text-emerald-600 uppercase tracking-wider block mb-1">
-                  Trí Nhớ Dài Hạn • Cặp Kiến Thức
-                </span>
-                <h3 className="text-2xl font-black font-heading text-slate-800 mb-2">
-                  Lật Thẻ Ghép Đôi Từ Ngữ
-                </h3>
-                <p className="text-slate-500 text-sm font-medium leading-relaxed mb-4">
-                  Lật thẻ ghép đôi các cặp từ đồng nghĩa, từ trái nghĩa, hoặc ghép hình ảnh nghệ thuật tương ứng. Rèn luyện trí nhớ ngôn từ lâu dài!
-                </p>
-                <div className="flex flex-wrap gap-2 mb-6">
-                  <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold">
-                    🧠 Ghi nhớ từ ngữ
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    {g.badge}
                   </span>
-                  <span className="px-2.5 py-1 bg-teal-50 text-teal-700 rounded-lg text-xs font-bold">
-                    ⏱️ Bấm giờ kỷ lục
-                  </span>
-                  <span className="px-2.5 py-1 bg-mint-50 text-mint-700 rounded-lg text-xs font-bold">
-                    ⭐ Đánh giá sao
-                  </span>
+                  <button
+                    onClick={() => handleStartGame(g.id)}
+                    className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 text-xs font-bold transition flex items-center gap-1"
+                  >
+                    Bắt Đầu <ArrowRight className="w-3 h-3" />
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={() => handleStartGame("memory-flip")}
-                className="w-full py-3.5 text-white font-black text-base rounded-2xl btn-game-green shadow-md flex items-center justify-center gap-2"
-              >
-                Chơi Ngay 🃏
-              </button>
-            </div>
+            ))}
           </div>
         </section>
 
-        {/* HOME SELF-STUDY SECTION */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 rounded-3xl p-8 sm:p-12 text-white border-4 border-purple-400 shadow-2xl relative overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-              <div className="lg:col-span-7 space-y-4 text-center lg:text-left">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-400/20 text-purple-300 font-bold text-xs">
-                  <Sparkles className="w-4 h-4 text-amber-300" /> BÍ QUYẾT TỰ HỌC TIẾNG VIỆT TẠI NHÀ HIỆU QUẢ
+        {/* STUDY HABIT & VOCABULARY NOTEBOOK SECTION */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              <div className="lg:col-span-7 space-y-3.5 text-center lg:text-left">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-amber-300 font-semibold text-xs">
+                  <BookOpen className="w-3.5 h-3.5" /> Bí Quyết Tự Học Tiếng Việt 15 Phút Mỗi Tối
                 </div>
-                <h2 className="text-3xl sm:text-5xl font-black font-heading text-white">
-                  15 Phút Mỗi Ngày, <br />
-                  <span className="text-amber-300">Vững Vàng Tiếng Việt!</span>
-                </h2>
-                <p className="text-slate-300 text-sm sm:text-base font-medium max-w-xl leading-relaxed">
-                  Không cần học thêm căng thẳng: Học sinh chỉ cần mở app ở nhà mỗi tối, ôn đúng chuyên đề cô giao, chơi các trò chơi ngôn từ để ghi nhớ sâu ngữ pháp và chính tả!
+
+                <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                  Tích Lũy Vốn Từ & Ghi Nhớ Bền Lâu
+                </h3>
+
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-xl font-normal">
+                  Mỗi lần làm bài tập hoặc chơi mini-game, những từ ngữ hay, quy tắc chính tả và thành ngữ ca dao mới sẽ được tự động lưu vào <strong>Sổ Tay Ngôn Từ</strong> của em để ôn tập lại bất kỳ lúc nào.
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                  <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10">
-                    <span className="text-2xl block mb-1">📖</span>
-                    <h5 className="font-black text-white text-xs">1. Ôn Chuyên Đề</h5>
-                    <p className="text-[11px] text-slate-300">Hoàn thành bài tập cô Mai Lan vừa giao</p>
-                  </div>
-                  <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10">
-                    <span className="text-2xl block mb-1">🎮</span>
-                    <h5 className="font-black text-white text-xs">2. Chơi Mini-Game</h5>
-                    <p className="text-[11px] text-slate-300">Luyện từ loại, chính tả, ca dao tục ngữ</p>
-                  </div>
-                  <div className="bg-white/10 p-3.5 rounded-2xl border border-white/10">
-                    <span className="text-2xl block mb-1">🔥</span>
-                    <h5 className="font-black text-white text-xs">3. Giữ Chuỗi Lửa</h5>
-                    <p className="text-[11px] text-slate-300">Nhận điểm XP và thăng hạng Bảng Vàng</p>
-                  </div>
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-2">
+                  <button
+                    onClick={() => {
+                      sound.playClick();
+                      setVocabModalOpen(true);
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5"
+                  >
+                    <BookOpen className="w-4 h-4" /> Mở Sổ Tay Ngôn Từ Của Em
+                  </button>
                 </div>
               </div>
 
-              <div className="lg:col-span-5 text-center">
-                <div className="bg-white/10 backdrop-blur-md p-6 sm:p-8 rounded-3xl border border-white/20 inline-block max-w-sm w-full shadow-inner">
-                  <div className="text-5xl mb-3">🏡</div>
-                  <h4 className="font-black text-xl text-white">Góc Học Tập Nhỏ</h4>
-                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                    Dán thẻ QR của cô phát lên góc bàn học. Mỗi tối chỉ cần quét một chạm là vào học ngay!
-                  </p>
-                  <div className="mt-5 pt-4 border-t border-white/10 flex justify-center items-center gap-4">
-                    <span className="text-xs font-bold text-emerald-300">✓ Không quên mật khẩu</span>
-                    <span className="text-xs font-bold text-amber-300">✓ 100% Tiếng Việt</span>
+              <div className="lg:col-span-5 flex justify-center">
+                <div className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/10 max-w-xs w-full text-center space-y-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl mx-auto font-bold">
+                    📖
                   </div>
+                  <h4 className="font-bold text-sm text-white">Sổ Tay Ngôn Từ</h4>
+                  <p className="text-xs text-slate-300 leading-relaxed font-normal">
+                    Đã có sẵn danh mục từ đồng nghĩa, từ loại, chính tả và thành ngữ ca dao giúp em tự tra cứu tại nhà.
+                  </p>
                 </div>
               </div>
             </div>
@@ -672,50 +499,50 @@ export default function HomePage() {
 
         {/* CLASS LEADERBOARD SECTION */}
         <section id="leaderboard" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="text-center max-w-2xl mx-auto mb-10">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-black uppercase tracking-wider mb-2">
-              <Trophy className="w-4 h-4 text-amber-600" /> Bảng Vàng Vinh Danh
+          <div className="text-center max-w-2xl mx-auto mb-8 space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-semibold">
+              <Trophy className="w-3.5 h-3.5 text-amber-600" /> Bảng Vàng Vinh Danh
             </div>
-            <h2 className="text-3xl sm:text-4xl font-black font-heading text-slate-900">
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
               Top Học Sinh Lớp 4A Tuần Này
             </h2>
-            <p className="text-slate-500 text-sm font-medium mt-2">
-              Điểm số được cập nhật tự động sau mỗi lượt chơi mini-game và làm bài tập
+            <p className="text-xs text-slate-500">
+              Điểm số được tính tự động từ kết quả làm bài tập và chơi mini-game tại nhà
             </p>
           </div>
 
-          {/* Leaderboard Podium Top 3 */}
+          {/* Top 3 Podium Cards */}
           {sortedStudents.length >= 3 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto mb-8 items-end">
               {/* 2nd place */}
-              <div className="bg-white p-6 rounded-3xl border-2 border-slate-200 shadow-md text-center order-2 md:order-1">
-                <div className="text-3xl mb-1">🥈</div>
-                <div className="text-4xl mb-2">{sortedStudents[1]?.avatar || "🐼"}</div>
-                <h4 className="font-black text-slate-800 text-base">{sortedStudents[1]?.name}</h4>
-                <span className="text-xs font-bold text-slate-400 block">{sortedStudents[1]?.studentId}</span>
-                <div className="mt-3 px-3 py-1.5 bg-slate-100 rounded-xl font-extrabold text-sm text-slate-700">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs text-center order-2 md:order-1">
+                <span className="text-2xl mb-1 block">🥈</span>
+                <span className="text-3xl block mb-1">{sortedStudents[1]?.avatar || "🐼"}</span>
+                <h4 className="font-bold text-slate-900 text-sm">{sortedStudents[1]?.name}</h4>
+                <span className="text-[11px] text-slate-400 block">{sortedStudents[1]?.studentId}</span>
+                <div className="mt-2.5 px-3 py-1 bg-slate-100 rounded-lg text-xs font-bold text-slate-700">
                   {sortedStudents[1]?.xp} XP
                 </div>
               </div>
 
               {/* 1st place */}
-              <div className="bg-gradient-to-b from-amber-50 to-white p-7 rounded-3xl border-4 border-amber-300 shadow-xl text-center order-1 md:order-2 transform md:-translate-y-4">
-                <div className="text-4xl mb-1 animate-bounce">👑</div>
-                <div className="text-5xl mb-2">{sortedStudents[0]?.avatar || "🦊"}</div>
-                <h4 className="font-black text-slate-900 text-lg">{sortedStudents[0]?.name}</h4>
-                <span className="text-xs font-extrabold text-amber-600 block">{sortedStudents[0]?.studentId}</span>
-                <div className="mt-3 px-4 py-2 bg-amber-400 text-amber-950 rounded-xl font-black text-base shadow-sm">
-                  {sortedStudents[0]?.xp} XP ⚡
+              <div className="bg-gradient-to-b from-amber-50/70 to-white p-6 rounded-2xl border-2 border-amber-300 shadow-sm text-center order-1 md:order-2 transform md:-translate-y-2">
+                <span className="text-3xl mb-1 block">👑</span>
+                <span className="text-4xl block mb-1">{sortedStudents[0]?.avatar || "🦊"}</span>
+                <h4 className="font-bold text-slate-900 text-base">{sortedStudents[0]?.name}</h4>
+                <span className="text-xs font-bold text-amber-700 block">{sortedStudents[0]?.studentId}</span>
+                <div className="mt-2.5 px-3 py-1 bg-amber-400 text-slate-950 rounded-lg text-xs font-bold">
+                  {sortedStudents[0]?.xp} XP
                 </div>
               </div>
 
               {/* 3rd place */}
-              <div className="bg-white p-6 rounded-3xl border-2 border-slate-200 shadow-md text-center order-3">
-                <div className="text-3xl mb-1">🥉</div>
-                <div className="text-4xl mb-2">{sortedStudents[2]?.avatar || "🦁"}</div>
-                <h4 className="font-black text-slate-800 text-base">{sortedStudents[2]?.name}</h4>
-                <span className="text-xs font-bold text-slate-400 block">{sortedStudents[2]?.studentId}</span>
-                <div className="mt-3 px-3 py-1.5 bg-amber-50 rounded-xl font-extrabold text-sm text-amber-700">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs text-center order-3">
+                <span className="text-2xl mb-1 block">🥉</span>
+                <span className="text-3xl block mb-1">{sortedStudents[2]?.avatar || "🦁"}</span>
+                <h4 className="font-bold text-slate-900 text-sm">{sortedStudents[2]?.name}</h4>
+                <span className="text-[11px] text-slate-400 block">{sortedStudents[2]?.studentId}</span>
+                <div className="mt-2.5 px-3 py-1 bg-slate-100 rounded-lg text-xs font-bold text-slate-700">
                   {sortedStudents[2]?.xp} XP
                 </div>
               </div>
@@ -723,19 +550,21 @@ export default function HomePage() {
           )}
 
           {/* Badges Showcase */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm max-w-4xl mx-auto">
-            <h4 className="text-base font-extrabold text-slate-800 mb-4 flex items-center gap-2">
-              🏅 Bộ Huy Hiệu Danh Dự Có Thể Mở Khóa:
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs max-w-4xl mx-auto">
+            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+              Huy Hiệu Có Thể Mở Khóa:
             </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
               {BADGES.map((b) => (
                 <div
                   key={b.id}
-                  className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center hover:scale-105 transition"
+                  className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center hover:bg-slate-100/80 transition"
                 >
-                  <span className="text-3xl block mb-1">{b.icon}</span>
-                  <span className="font-black text-xs text-slate-800 block">{b.title}</span>
-                  <span className="text-[10px] text-slate-500 line-clamp-2 mt-0.5">{b.description}</span>
+                  <span className="text-2xl block mb-1">{b.icon}</span>
+                  <span className="font-bold text-xs text-slate-800 block">{b.title}</span>
+                  <span className="text-[10px] text-slate-400 line-clamp-2 mt-0.5 font-normal">
+                    {b.description}
+                  </span>
                 </div>
               ))}
             </div>
@@ -744,27 +573,23 @@ export default function HomePage() {
       </main>
 
       {/* FOOTER */}
-      <footer className="bg-white border-t border-slate-200 py-10 mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-spark-600 flex items-center justify-center text-white font-black text-base">
+      <footer className="bg-white border-t border-slate-200 py-8 mt-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left text-xs text-slate-500">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">
               ⚡
             </div>
-            <div>
-              <span className="font-black text-slate-900">EduSpark</span>
-              <span className="text-xs text-slate-400 block">Nền tảng học tập gamified cho học sinh Cấp 1 & 2</span>
-            </div>
+            <span className="font-bold text-slate-800">EduSpark Tiếng Việt</span>
+            <span>— Nền tảng tự học & ôn tập tại nhà chuẩn Cấp 1 & 2</span>
           </div>
 
-          <div className="flex items-center gap-4 text-xs font-bold text-slate-500">
-            <a href="#games" className="hover:text-spark-600 transition">Mini-Games</a>
-            <a href="#leaderboard" className="hover:text-spark-600 transition">Bảng Vàng</a>
-            <a href="/teacher" className="hover:text-spark-600 transition">Cổng Giáo Viên</a>
+          <div className="flex items-center gap-4">
+            <a href="#games" className="hover:text-indigo-600 transition">Trò Chơi</a>
+            <a href="#leaderboard" className="hover:text-indigo-600 transition">Bảng Vàng</a>
+            <a href="/teacher" className="hover:text-indigo-600 transition">Cổng Giáo Viên</a>
           </div>
 
-          <p className="text-xs text-slate-400">
-            © 2026 EduSpark. Thiết kế hiện đại & chuẩn sư phạm.
-          </p>
+          <p className="text-slate-400">© 2026 EduSpark. Chuẩn sư phạm & công nghệ giáo dục hiện đại.</p>
         </div>
       </footer>
 
@@ -772,8 +597,14 @@ export default function HomePage() {
       {activeGame === "speed-quiz" && (
         <SpeedQuizGame onClose={() => setActiveGame(null)} />
       )}
-      {activeGame === "memory-flip" && (
-        <MemoryFlipGame onClose={() => setActiveGame(null)} />
+      {activeGame === "sorting-basket" && (
+        <SortingBasketGame onClose={() => setActiveGame(null)} />
+      )}
+      {activeGame === "sentence-builder" && (
+        <SentenceBuilderGame onClose={() => setActiveGame(null)} />
+      )}
+      {activeGame === "laser-match" && (
+        <LaserMatchGame onClose={() => setActiveGame(null)} />
       )}
       {activeGame === "word-scramble" && (
         <WordScrambleGame onClose={() => setActiveGame(null)} />
@@ -781,12 +612,18 @@ export default function HomePage() {
       {activeGame === "true-false" && (
         <TrueFalseGame onClose={() => setActiveGame(null)} />
       )}
-      {activeGame === "sorting-basket" && (
-        <SortingBasketGame onClose={() => setActiveGame(null)} />
+      {activeGame === "memory-flip" && (
+        <MemoryFlipGame onClose={() => setActiveGame(null)} />
       )}
-      {activeGame === "laser-match" && (
-        <LaserMatchGame onClose={() => setActiveGame(null)} />
+      {activeGame === "lucky-wheel" && (
+        <LuckyWheelGame onClose={() => setActiveGame(null)} />
       )}
+
+      {/* VOCABULARY NOTEBOOK MODAL */}
+      <VocabularyNotebookModal
+        isOpen={vocabModalOpen}
+        onClose={() => setVocabModalOpen(false)}
+      />
 
       {/* AVATAR WARDROBE MODAL */}
       <AvatarModal
