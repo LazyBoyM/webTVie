@@ -4,6 +4,6 @@ import { testDbConnection } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const status = await testDbConnection();
+  const status = testDbConnection();
   return NextResponse.json(status);
 }

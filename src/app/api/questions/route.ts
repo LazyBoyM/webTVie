@@ -1,33 +1,43 @@
 import { NextResponse } from "next/server";
-import { getDbPool } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { INITIAL_VIETNAMESE_QUESTIONS } from "@/lib/dataStore";
-import { RowDataPacket } from "mysql2";
 
 export const dynamic = "force-dynamic";
+
+interface QuestionDbRow {
+  id: string;
+  subject: string;
+  grade: number;
+  topic: string;
+  topicId: string;
+  question: string;
+  options: string;
+  correctIndex: number;
+  explanation: string;
+  difficulty: string;
+}
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const topicId = searchParams.get("topicId");
 
-    const pool = getDbPool();
-    let query = "SELECT id, subject, grade, topic, topic_id as topicId, question, options, correct_index as correctIndex, explanation, difficulty FROM questions";
-    const params: string[] = [];
+    const db = getDb();
+    const query =
+      "SELECT id, subject, grade, topic, topic_id as topicId, question, options, correct_index as correctIndex, explanation, difficulty FROM questions";
 
-    if (topicId) {
-      query += " WHERE topic_id = ?";
-      params.push(topicId);
-    }
-    query += " ORDER BY created_at DESC";
-
-    const [rows] = await pool.query<RowDataPacket[]>(query, params);
+    const rows = (
+      topicId
+        ? db.prepare(query + " WHERE topic_id = ? ORDER BY created_at DESC").all(topicId)
+        : db.prepare(query + " ORDER BY created_at DESC").all()
+    ) as QuestionDbRow[];
 
     if (rows && rows.length > 0) {
       const parsed = rows.map((r) => ({
         ...r,
         options: typeof r.options === "string" ? JSON.parse(r.options) : r.options,
       }));
-      return NextResponse.json({ success: true, source: "mysql", data: parsed });
+      return NextResponse.json({ success: true, source: "sqlite", data: parsed });
     }
     return NextResponse.json({ success: true, source: "fallback", data: INITIAL_VIETNAMESE_QUESTIONS });
   } catch {
@@ -45,27 +55,26 @@ export async function POST(req: Request) {
     }
 
     const questionId = id || `vn_q_${Date.now()}`;
-    const pool = getDbPool();
-    await pool.query(
+    const db = getDb();
+    db.prepare(
       `INSERT INTO questions (id, subject, grade, topic, topic_id, question, options, correct_index, explanation, difficulty)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        questionId,
-        subject || "tieng-viet",
-        grade || 4,
-        topic || "Chung",
-        topicId || "topic_tu_loai",
-        question,
-        JSON.stringify(options),
-        correctIndex ?? 0,
-        explanation || "",
-        difficulty || "medium",
-      ]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      questionId,
+      subject || "tieng-viet",
+      grade || 4,
+      topic || "Chung",
+      topicId || "topic_tu_loai",
+      question,
+      JSON.stringify(options),
+      correctIndex ?? 0,
+      explanation || "",
+      difficulty || "medium"
     );
 
     return NextResponse.json({
       success: true,
-      message: "Đã lưu câu hỏi mới vào CSDL MySQL",
+      message: "Đã lưu câu hỏi mới vào CSDL SQLite",
       data: { id: questionId, ...body },
     });
   } catch (err: unknown) {

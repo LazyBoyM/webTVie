@@ -4,7 +4,7 @@ import { setupDatabase } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function POST() {
-  const result = await setupDatabase();
+  const result = setupDatabase();
   return NextResponse.json(result, {
     status: result.success ? 200 : 500,
   });

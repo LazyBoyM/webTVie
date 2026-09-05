@@ -520,7 +520,7 @@ export default function TeacherPage() {
           </div>
         </div>
 
-        {/* XAMPP MySQL Database Banner & Management Bar */}
+        {/* SQLite Local Database Banner & Management Bar */}
         <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 mb-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
@@ -531,7 +531,7 @@ export default function TeacherPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-slate-900 text-sm sm:text-base">
-                  Cơ Sở Dữ Liệu MySQL Cục Bộ (XAMPP)
+                  Cơ Sở Dữ Liệu SQLite Cục Bộ (Không Cần Cài XAMPP)
                 </h3>
                 <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                   dbStatus?.connected
@@ -539,11 +539,11 @@ export default function TeacherPage() {
                     : "bg-amber-50 text-amber-700 border border-amber-200"
                 }`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${dbStatus?.connected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
-                  {dbStatus?.connected ? "Đã kết nối XAMPP" : "Chưa kết nối MySQL"}
+                  {dbStatus?.connected ? "SQLite Sẵn Sàng" : "Khởi tạo CSDL"}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                {dbStatus?.message || "Đang kiểm tra kết nối tới cổng 3306..."} (Database: <code className="font-mono text-slate-700">eduspark_db</code>)
+                {dbStatus?.message || "Tệp cơ sở dữ liệu:"} (Lưu tại: <code className="font-mono text-slate-700">database/eduspark.db</code>)
               </p>
             </div>
           </div>
@@ -551,19 +551,19 @@ export default function TeacherPage() {
           <div className="flex items-center gap-2 w-full md:w-auto">
             <button
               onClick={handleSyncDatabase}
-              disabled={dbLoading || !dbStatus?.connected}
+              disabled={dbLoading}
               className="flex-1 md:flex-none px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-40"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${dbLoading ? "animate-spin" : ""}`} />
-              Đồng Bộ Dữ Liệu
+              Làm Mới / Đồng Bộ
             </button>
             <button
               onClick={handleInitDatabase}
               disabled={dbLoading}
-              className="flex-1 md:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
+              className="flex-1 md:flex-none px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
               <Database className="w-3.5 h-3.5" />
-              {dbLoading ? "Đang xử lý..." : "Khởi Tạo / Cập Nhật CSDL"}
+              {dbLoading ? "Đang xử lý..." : "Nạp Dữ Liệu Mẫu Mới"}
             </button>
           </div>
         </div>

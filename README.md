@@ -25,37 +25,18 @@
 - **Studio Soạn Đề Theo Chuyên Đề**: Tạo chuyên đề mới, biên tập câu hỏi thủ công hoặc dùng **AI 1-click** để sinh câu hỏi trắc nghiệm tiếng Việt kèm lời giải chi tiết.
 - **1-Click Giao Bài Cho Cả Lớp**: Kích hoạt chuyên đề để hiển thị trực tiếp lên tài khoản học sinh ở nhà.
 - **Quản Lý Học Sinh & In Thẻ QR**: Thêm học sinh, nhập file Excel/CSV, in hàng loạt thẻ học sinh có mã QR kèm thông tin lớp.
-- **Quản Trị CSDL MySQL XAMPP 1-Click**: Khởi tạo database `eduspark_db` và đồng bộ dữ liệu ngay từ giao diện web.
+- **Quản Trị CSDL SQLite Cục Bộ Tự Động**: Lưu trữ vào tệp `database/eduspark.db`, không cần cài thêm app ngoài.
 
 ---
 
-## 🗄️ Hướng Dẫn Cấu Hình Cơ Sở Dữ Liệu XAMPP (Localhost MySQL)
+## 🗄️ Cơ Sở Dữ Liệu SQLite Cục Bộ (Zero-Config, Không Cần Cài XAMPP)
 
-Dự án sử dụng cơ sở dữ liệu **MySQL cục bộ trên máy tính thông qua XAMPP**, hoàn toàn không cần thuê hosting hay cloud database:
+Dự án sử dụng cơ sở dữ liệu **SQLite nhúng cục bộ** (`better-sqlite3`), mang lại sự tiện lợi tối đa:
 
-### Bước 1: Khởi động MySQL trong XAMPP
-1. Mở ứng dụng **XAMPP Control Panel**.
-2. Bấm nút **Start** ở dòng **MySQL** (cổng mặc định: `3306`).
-*(Có thể bấm Start thêm **Apache** nếu muốn truy cập phpMyAdmin tại `http://localhost/phpmyadmin`)*.
-
-### Bước 2: Khởi tạo Cơ sở dữ liệu (2 Cách)
-- **Cách 1 (Nhanh nhất - 1 Click từ Web)**:
-  - Mở cổng giáo viên `http://localhost:3000/teacher` (hoặc cổng 3030).
-  - Bấm nút **"Khởi Tạo / Cập Nhật CSDL"** tại thanh trạng thái MySQL. Hệ thống sẽ tự động tạo database `eduspark_db`, tạo 5 bảng quan hệ và nạp sẵn toàn bộ dữ liệu mẫu Tiếng Việt!
-- **Cách 2 (Qua phpMyAdmin)**:
-  - Truy cập `http://localhost/phpmyadmin`.
-  - Chọn thẻ **Import** (Nhập).
-  - Chọn file `database/schema.sql` trong thư mục dự án và bấm **Import**.
-
-### Cấu hình file `.env.local`
-File cấu hình mặc định đã được tạo sẵn trong dự án:
-```env
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=
-DB_NAME=eduspark_db
-```
+- ✅ **Không cần cài XAMPP hay bất kỳ phần mềm máy chủ nào ở ngoài.**
+- ✅ Toàn bộ dữ liệu học sinh, điểm XP, ngân hàng câu hỏi Tiếng Việt và Sổ tay ngôn từ được lưu trữ trực tiếp vào tệp **`database/eduspark.db`** ngay trong thư mục dự án.
+- ✅ Tệp CSDL và toàn bộ dữ liệu mẫu Tiếng Việt **tự động khởi tạo ngay khi bạn chạy ứng dụng lần đầu tiên**.
+- ✅ Dễ dàng sao chép thư mục dự án sang bất kỳ máy tính nào khác hoặc chia sẻ cho bạn bè, mở lên là chạy được ngay mà không cần cấu hình phức tạp.
 
 ---
 
