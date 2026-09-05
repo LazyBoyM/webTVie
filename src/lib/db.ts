@@ -41,9 +41,14 @@ function initTables(db: Database.Database) {
       total_questions INTEGER DEFAULT 10,
       icon TEXT DEFAULT '📖',
       description TEXT,
+      is_active INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  try {
+    db.exec("ALTER TABLE topics ADD COLUMN is_active INTEGER DEFAULT 0;");
+  } catch {}
+
 
   // 2. Bảng students
   db.exec(`

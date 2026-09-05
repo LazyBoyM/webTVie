@@ -70,15 +70,15 @@ export default function Navbar() {
               className="px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 hover:text-indigo-600 hover:bg-indigo-50/60 transition flex items-center gap-1.5"
             >
               <Gamepad2 className="w-4 h-4 text-indigo-500" />
-              8 Trò Chơi Ôn Tập
+              Bài Ôn Tập
             </Link>
             <Link
-              href="#leaderboard"
+              href="/#leaderboard"
               onClick={() => sound.playClick()}
               className="px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 hover:text-indigo-600 hover:bg-indigo-50/60 transition flex items-center gap-1.5"
             >
               <Trophy className="w-4 h-4 text-amber-500" />
-              Bảng Vàng Thi Đua
+              Bảng Thành Tích
             </Link>
             <Link
               href="/teacher"

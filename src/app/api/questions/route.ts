@@ -82,3 +82,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) {
+      return NextResponse.json({ success: false, message: "Thiếu question id" }, { status: 400 });
+    }
+
+    const db = getDb();
+    db.prepare("DELETE FROM questions WHERE id = ?").run(id);
+
+    return NextResponse.json({ success: true, message: "Đã xóa câu hỏi thành công khỏi SQLite" });
+  } catch (err: unknown) {
+    const error = err as { message?: string };
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}
+
