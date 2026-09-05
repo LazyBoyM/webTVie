@@ -34,3 +34,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ide and agent artifacts
+.agents/
+.gemini/
+.vscode/
+.idea/
+*.log
+
