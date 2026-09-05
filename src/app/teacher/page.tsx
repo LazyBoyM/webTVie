@@ -13,7 +13,8 @@ import {
   setActiveVietnameseTopic,
   getVietnameseQuestions,
   addVietnameseQuestion,
-  deleteVietnameseQuestion
+  deleteVietnameseQuestion,
+  syncFromMySql
 } from "@/lib/dataStore";
 import { sound } from "@/lib/soundEffects";
 import {
@@ -31,7 +32,9 @@ import {
   BookOpen,
   Plus,
   Tag,
-  Check
+  Check,
+  Database,
+  RefreshCw
 } from "lucide-react";
 
 export default function TeacherPage() {
@@ -67,6 +70,58 @@ export default function TeacherPage() {
   // AI Topic Question generator state
   const [aiTopicGenerating, setAiTopicGenerating] = useState(false);
 
+  // XAMPP MySQL database state
+  const [dbStatus, setDbStatus] = useState<{
+    connected: boolean;
+    message: string;
+    databaseExists?: boolean;
+  } | null>(null);
+  const [dbLoading, setDbLoading] = useState(false);
+
+  const checkDbStatus = async () => {
+    try {
+      const res = await fetch("/api/db/status");
+      const data = await res.json();
+      setDbStatus(data);
+    } catch {
+      setDbStatus({
+        connected: false,
+        message: "Không thể kết nối máy chủ API.",
+      });
+    }
+  };
+
+  const handleInitDatabase = async () => {
+    sound.playClick();
+    setDbLoading(true);
+    try {
+      const res = await fetch("/api/db/init", { method: "POST" });
+      const data = await res.json();
+      alert(data.message);
+      if (data.success) {
+        sound.playVictory();
+        await checkDbStatus();
+        await syncFromMySql();
+      }
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      alert("Lỗi kết nối MySQL: " + (error.message || "Vui lòng mở XAMPP và Start MySQL"));
+    } finally {
+      setDbLoading(false);
+    }
+  };
+
+  const handleSyncDatabase = async () => {
+    sound.playClick();
+    setDbLoading(true);
+    const res = await syncFromMySql();
+    alert(res.message);
+    if (res.success) {
+      sound.playVictory();
+    }
+    setDbLoading(false);
+  };
+
   useEffect(() => {
     const updateStudents = () => setStudents(getClassStudents());
     const updateTopics = () => setVnTopics(getVietnameseTopics());
@@ -75,6 +130,7 @@ export default function TeacherPage() {
     updateStudents();
     updateTopics();
     updateQuestions();
+    checkDbStatus();
 
     window.addEventListener("eduspark_class_change", updateStudents);
     window.addEventListener("eduspark_topics_change", updateTopics);
@@ -461,6 +517,54 @@ export default function TeacherPage() {
                 <Printer className="w-4 h-4" /> In Thẻ QR Học Sinh
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* XAMPP MySQL Database Banner & Management Bar */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 mb-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
+              dbStatus?.connected ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+            }`}>
+              <Database className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-slate-900 text-sm sm:text-base">
+                  Cơ Sở Dữ Liệu MySQL Cục Bộ (XAMPP)
+                </h3>
+                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                  dbStatus?.connected
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${dbStatus?.connected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
+                  {dbStatus?.connected ? "Đã kết nối XAMPP" : "Chưa kết nối MySQL"}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {dbStatus?.message || "Đang kiểm tra kết nối tới cổng 3306..."} (Database: <code className="font-mono text-slate-700">eduspark_db</code>)
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <button
+              onClick={handleSyncDatabase}
+              disabled={dbLoading || !dbStatus?.connected}
+              className="flex-1 md:flex-none px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-40"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${dbLoading ? "animate-spin" : ""}`} />
+              Đồng Bộ Dữ Liệu
+            </button>
+            <button
+              onClick={handleInitDatabase}
+              disabled={dbLoading}
+              className="flex-1 md:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
+            >
+              <Database className="w-3.5 h-3.5" />
+              {dbLoading ? "Đang xử lý..." : "Khởi Tạo / Cập Nhật CSDL"}
+            </button>
           </div>
         </div>
 

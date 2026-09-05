@@ -292,6 +292,15 @@ export function addVietnameseQuestion(newQuestion: Question) {
   const updated = [newQuestion, ...current];
   saveVietnameseQuestions(updated);
 
+  // Sync to MySQL in background
+  if (typeof window !== "undefined") {
+    fetch("/api/questions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newQuestion),
+    }).catch(() => {});
+  }
+
   // Update questionCount in corresponding topic
   if (newQuestion.topicId) {
     const topics = getVietnameseTopics();
@@ -337,6 +346,56 @@ export function addVocabularyNote(newNote: VocabularyItem) {
   if (!exists) {
     const updated = [newNote, ...current];
     saveVocabularyNotes(updated);
+
+    // Sync to MySQL in background
+    if (typeof window !== "undefined") {
+      fetch("/api/vocabulary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newNote),
+      }).catch(() => {});
+    }
   }
 }
+
+/**
+ * Đồng bộ dữ liệu hai chiều giữa Local và MySQL XAMPP
+ */
+export async function syncFromMySql(): Promise<{ success: boolean; message: string }> {
+  if (typeof window === "undefined") return { success: false, message: "Client only" };
+  try {
+    const resStatus = await fetch("/api/db/status");
+    const statusData = await resStatus.json();
+    if (!statusData.connected) {
+      return { success: false, message: statusData.message || "Chưa kết nối MySQL XAMPP" };
+    }
+
+    // Fetch questions
+    const qRes = await fetch("/api/questions");
+    const qData = await qRes.json();
+    if (qData.success && Array.isArray(qData.data)) {
+      saveVietnameseQuestions(qData.data);
+    }
+
+    // Fetch vocabulary
+    const vRes = await fetch("/api/vocabulary");
+    const vData = await vRes.json();
+    if (vData.success && Array.isArray(vData.data)) {
+      saveVocabularyNotes(vData.data);
+    }
+
+    // Fetch students
+    const sRes = await fetch("/api/students");
+    const sData = await sRes.json();
+    if (sData.success && Array.isArray(sData.data)) {
+      saveClassStudents(sData.data);
+    }
+
+    return { success: true, message: "Đã đồng bộ thành công dữ liệu từ MySQL XAMPP!" };
+  } catch (err: unknown) {
+    const error = err as { message?: string };
+    return { success: false, message: error.message || "Lỗi đồng bộ dữ liệu" };
+  }
+}
+
 

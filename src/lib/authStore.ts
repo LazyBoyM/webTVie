@@ -144,6 +144,19 @@ export function useAuth() {
     };
     saveStoredStudent(updated);
     updateStudentProgress(student.studentId, xpEarned);
+
+    // Sync XP to MySQL in background
+    if (typeof window !== "undefined") {
+      fetch("/api/students", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: student.studentId,
+          xpDelta: xpEarned,
+          gemsDelta: Math.floor(xpEarned / 5),
+        }),
+      }).catch(() => {});
+    }
   };
 
   const updateStudentAvatar = (newAvatar: string) => {
