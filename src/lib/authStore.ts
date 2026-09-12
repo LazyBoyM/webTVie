@@ -157,7 +157,7 @@ export function useAuth() {
     saveStoredStudent(updated);
     updateStudentProgress(student.studentId, xpEarned);
 
-    // Sync XP to MySQL in background
+    // Sync XP to Turso Cloud in background
     if (typeof window !== "undefined") {
       fetch("/api/students", {
         method: "PUT",

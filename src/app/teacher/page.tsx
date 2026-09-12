@@ -5,7 +5,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { useAuth, DEMO_TEACHER } from "@/lib/authStore";
 import { Question, StudentProfile, VietnameseTopic } from "@/lib/data";
-import { syncFromMySql } from "@/lib/dataStore";
+import { syncFromTurso } from "@/lib/dataStore";
 import { sound } from "@/lib/soundEffects";
 import {
   Users,
@@ -340,11 +340,11 @@ export default function TeacherPage() {
   const handleSyncData = async () => {
     sound.playClick();
     setDbLoading(true);
-    await syncFromMySql();
+    await syncFromTurso();
     await loadData();
     sound.playVictory();
     setDbLoading(false);
-    alert("Đã làm mới dữ liệu từ CSDL SQLite thành công!");
+    alert("Đã làm mới dữ liệu từ CSDL Turso Cloud thành công!");
   };
 
   // State Đăng Nhập Cổng Giáo Viên

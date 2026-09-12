@@ -297,7 +297,7 @@ export function addVietnameseQuestion(newQuestion: Question) {
   const updated = [newQuestion, ...current];
   saveVietnameseQuestions(updated);
 
-  // Sync to MySQL in background
+  // Sync to Turso Cloud in background
   if (typeof window !== "undefined") {
     fetch("/api/questions", {
       method: "POST",
@@ -352,7 +352,7 @@ export function addVocabularyNote(newNote: VocabularyItem) {
     const updated = [newNote, ...current];
     saveVocabularyNotes(updated);
 
-    // Sync to MySQL in background
+    // Sync to Turso Cloud in background
     if (typeof window !== "undefined") {
       fetch("/api/vocabulary", {
         method: "POST",
@@ -364,15 +364,15 @@ export function addVocabularyNote(newNote: VocabularyItem) {
 }
 
 /**
- * Đồng bộ dữ liệu hai chiều giữa Local và MySQL XAMPP
+ * Đồng bộ dữ liệu hai chiều giữa Client và Turso SQLite Cloud
  */
-export async function syncFromMySql(): Promise<{ success: boolean; message: string }> {
+export async function syncFromTurso(): Promise<{ success: boolean; message: string }> {
   if (typeof window === "undefined") return { success: false, message: "Client only" };
   try {
     const resStatus = await fetch("/api/db/status");
     const statusData = await resStatus.json();
     if (!statusData.connected) {
-      return { success: false, message: statusData.message || "Chưa kết nối MySQL XAMPP" };
+      return { success: false, message: statusData.message || "Chưa kết nối Turso SQLite Cloud" };
     }
 
     // Fetch questions
@@ -396,11 +396,14 @@ export async function syncFromMySql(): Promise<{ success: boolean; message: stri
       saveClassStudents(sData.data);
     }
 
-    return { success: true, message: "Đã đồng bộ thành công dữ liệu từ MySQL XAMPP!" };
+    return { success: true, message: "Đã đồng bộ thành công dữ liệu từ Turso SQLite Cloud!" };
   } catch (err: unknown) {
     const error = err as { message?: string };
     return { success: false, message: error.message || "Lỗi đồng bộ dữ liệu" };
   }
 }
+
+// Alias tương thích ngược
+export const syncFromMySql = syncFromTurso;
 
 
