@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { SAMPLE_STUDENTS } from "@/lib/data";
 import { isTursoConfigured, getTursoClient, ensureTursoTables } from "@/lib/turso";
 
@@ -16,17 +15,6 @@ export async function GET() {
       if (result.rows && result.rows.length > 0) {
         return NextResponse.json({ success: true, source: "turso", data: result.rows });
       }
-      return NextResponse.json({ success: true, source: "fallback", data: SAMPLE_STUDENTS });
-    }
-
-    const db = getDb();
-    const rows = db
-      .prepare(
-        "SELECT id as studentId, '1234' as pin, name, avatar, 'Lớp 4A' as className, grade, xp, level, streak, '[]' as badges, 0 as completedQuizzes, 100 as accuracy FROM students ORDER BY xp DESC"
-      )
-      .all();
-    if (rows && rows.length > 0) {
-      return NextResponse.json({ success: true, source: "sqlite", data: rows });
     }
     return NextResponse.json({ success: true, source: "fallback", data: SAMPLE_STUDENTS });
   } catch {
@@ -42,61 +30,34 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: false, message: "Thiếu student id" }, { status: 400 });
     }
 
-    if (isTursoConfigured()) {
-      const turso = getTursoClient()!;
-      await ensureTursoTables(turso);
-
-      if (name !== undefined || avatar !== undefined || grade !== undefined) {
-        await turso.execute({
-          sql: "UPDATE students SET name = COALESCE(?, name), avatar = COALESCE(?, avatar), grade = COALESCE(?, grade) WHERE id = ?",
-          args: [name ?? null, avatar ?? null, grade ?? null, id],
-        });
-      }
-
-      if (xpDelta !== undefined || gemsDelta !== undefined || streak !== undefined) {
-        await turso.execute({
-          sql: `UPDATE students 
-                SET xp = xp + ?, 
-                    gems = gems + ?, 
-                    streak = COALESCE(?, streak), 
-                    level = CAST((xp + ?) / 300 AS INT) + 1,
-                    last_active = 'Hôm nay'
-                WHERE id = ?`,
-          args: [xpDelta || 0, gemsDelta || 0, streak ?? null, xpDelta || 0, id],
-        });
-      }
-
-      return NextResponse.json({ success: true, message: "Đã cập nhật học sinh thành công vào Turso Cloud" });
+    if (!isTursoConfigured()) {
+      return NextResponse.json({ success: false, message: "Chưa cấu hình CSDL Turso Cloud" }, { status: 500 });
     }
 
-    const db = getDb();
+    const turso = getTursoClient()!;
+    await ensureTursoTables(turso);
 
-    // Cập nhật thông tin định danh học sinh (tên, avatar, khối lớp)
     if (name !== undefined || avatar !== undefined || grade !== undefined) {
-      db.prepare(`
-        UPDATE students
-        SET name = COALESCE(?, name),
-            avatar = COALESCE(?, avatar),
-            grade = COALESCE(?, grade)
-        WHERE id = ?
-      `).run(name ?? null, avatar ?? null, grade ?? null, id);
+      await turso.execute({
+        sql: "UPDATE students SET name = COALESCE(?, name), avatar = COALESCE(?, avatar), grade = COALESCE(?, grade) WHERE id = ?",
+        args: [name ?? null, avatar ?? null, grade ?? null, id],
+      });
     }
 
-    // Cập nhật điểm XP / gems / streak nếu có
     if (xpDelta !== undefined || gemsDelta !== undefined || streak !== undefined) {
-      const update = db.prepare(`
-        UPDATE students 
-        SET xp = xp + ?, 
-            gems = gems + ?, 
-            streak = COALESCE(?, streak), 
-            level = CAST((xp + ?) / 300 AS INT) + 1,
-            last_active = 'Hôm nay'
-        WHERE id = ?
-      `);
-      update.run(xpDelta || 0, gemsDelta || 0, streak ?? null, xpDelta || 0, id);
+      await turso.execute({
+        sql: `UPDATE students 
+              SET xp = xp + ?, 
+                  gems = gems + ?, 
+                  streak = COALESCE(?, streak), 
+                  level = CAST((xp + ?) / 300 AS INT) + 1,
+                  last_active = 'Hôm nay'
+              WHERE id = ?`,
+        args: [xpDelta || 0, gemsDelta || 0, streak ?? null, xpDelta || 0, id],
+      });
     }
 
-    return NextResponse.json({ success: true, message: "Đã cập nhật học sinh thành công vào SQLite" });
+    return NextResponse.json({ success: true, message: "Đã cập nhật học sinh thành công vào Turso Cloud" });
   } catch (err: unknown) {
     const error = err as { message?: string };
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
@@ -111,33 +72,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Tên học sinh là bắt buộc" }, { status: 400 });
     }
 
-    const id = `stu_${Date.now()}`;
-
-    if (isTursoConfigured()) {
-      const turso = getTursoClient()!;
-      await ensureTursoTables(turso);
-      await turso.execute({
-        sql: `INSERT INTO students (id, name, grade, avatar, xp, streak, gems, stars, level, last_active)
-              VALUES (?, ?, ?, ?, 0, 1, 100, 10, 1, 'Hôm nay')`,
-        args: [id, name, grade || 4, avatar || "🦊"],
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: "Đã thêm học sinh mới vào Turso Cloud",
-        data: { id, name, grade, avatar, xp: 0, streak: 1, gems: 100, stars: 10, level: 1, lastActive: "Hôm nay" },
-      });
+    if (!isTursoConfigured()) {
+      return NextResponse.json({ success: false, message: "Chưa cấu hình CSDL Turso Cloud" }, { status: 500 });
     }
 
-    const db = getDb();
-    db.prepare(
-      `INSERT INTO students (id, name, grade, avatar, xp, streak, gems, stars, level, last_active)
-       VALUES (?, ?, ?, ?, 0, 1, 100, 10, 1, 'Hôm nay')`
-    ).run(id, name, grade || 4, avatar || "🦊");
+    const id = `stu_${Date.now()}`;
+    const turso = getTursoClient()!;
+    await ensureTursoTables(turso);
+
+    await turso.execute({
+      sql: `INSERT INTO students (id, name, grade, avatar, xp, streak, gems, stars, level, last_active)
+            VALUES (?, ?, ?, ?, 0, 1, 100, 10, 1, 'Hôm nay')`,
+      args: [id, name, grade || 4, avatar || "🦊"],
+    });
 
     return NextResponse.json({
       success: true,
-      message: "Đã thêm học sinh mới vào SQLite",
+      message: "Đã thêm học sinh mới vào Turso Cloud",
       data: { id, name, grade, avatar, xp: 0, streak: 1, gems: 100, stars: 10, level: 1, lastActive: "Hôm nay" },
     });
   } catch (err: unknown) {
@@ -154,20 +105,18 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ success: false, message: "Thiếu student id" }, { status: 400 });
     }
 
-    if (isTursoConfigured()) {
-      const turso = getTursoClient()!;
-      await ensureTursoTables(turso);
-      await turso.execute({
-        sql: "DELETE FROM students WHERE id = ?",
-        args: [id],
-      });
-      return NextResponse.json({ success: true, message: "Đã xóa học sinh thành công khỏi Turso Cloud" });
+    if (!isTursoConfigured()) {
+      return NextResponse.json({ success: false, message: "Chưa cấu hình CSDL Turso Cloud" }, { status: 500 });
     }
 
-    const db = getDb();
-    db.prepare("DELETE FROM students WHERE id = ?").run(id);
+    const turso = getTursoClient()!;
+    await ensureTursoTables(turso);
+    await turso.execute({
+      sql: "DELETE FROM students WHERE id = ?",
+      args: [id],
+    });
 
-    return NextResponse.json({ success: true, message: "Đã xóa học sinh thành công khỏi SQLite" });
+    return NextResponse.json({ success: true, message: "Đã xóa học sinh thành công khỏi Turso Cloud" });
   } catch (err: unknown) {
     const error = err as { message?: string };
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

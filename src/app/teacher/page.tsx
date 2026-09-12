@@ -504,16 +504,16 @@ export default function TeacherPage() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-slate-900 text-xs sm:text-sm">CSDL SQLite Cục Bộ</h3>
+                <h3 className="font-bold text-slate-900 text-xs sm:text-sm">CSDL Turso SQLite Cloud</h3>
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
                   dbStatus?.connected ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
                 }`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${dbStatus?.connected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
-                  {dbStatus?.connected ? "SQLite Sẵn Sàng" : "Đang kiểm tra CSDL"}
+                  {dbStatus?.connected ? "Turso Cloud Sẵn Sàng" : "Chưa kết nối Turso"}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500">
-                {dbStatus?.message || "Tự động lưu trữ vào: database/eduspark.db (Không cần cài đặt XAMPP)"}
+                {dbStatus?.message || "Đám mây đồng bộ dữ liệu trực tuyến 24/7"}
               </p>
             </div>
           </div>
@@ -797,7 +797,7 @@ export default function TeacherPage() {
               <div>
                 <h3 className="font-bold text-slate-900 text-sm">Danh Sách Học Sinh Trong Lớp</h3>
                 <p className="text-xs text-slate-500">
-                  Tổng số: <strong>{students.length} học sinh</strong> • Điểm số lưu trực tiếp vào CSDL SQLite
+                  Tổng số: <strong>{students.length} học sinh</strong> • Đồng bộ trực tuyến qua CSDL Turso Cloud
                 </p>
               </div>
 
@@ -947,7 +947,7 @@ export default function TeacherPage() {
                   disabled={dbLoading}
                   className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition shadow-xs disabled:opacity-50"
                 >
-                  {dbLoading ? "Đang lưu..." : "Lưu Đề Vào CSDL SQLite"}
+                  {dbLoading ? "Đang lưu..." : "Lưu Đề Vào Turso Cloud"}
                 </button>
               </div>
             </form>
@@ -1068,7 +1068,7 @@ export default function TeacherPage() {
                   disabled={dbLoading}
                   className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition shadow-xs disabled:opacity-50"
                 >
-                  {dbLoading ? "Đang lưu..." : "Lưu Câu Hỏi Vào CSDL SQLite"}
+                  {dbLoading ? "Đang lưu..." : "Lưu Câu Hỏi Vào Turso Cloud"}
                 </button>
               </div>
             </form>
@@ -1152,7 +1152,7 @@ export default function TeacherPage() {
                   disabled={dbLoading}
                   className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-xs disabled:opacity-50"
                 >
-                  {dbLoading ? "Đang lưu..." : "Thêm Vào CSDL SQLite"}
+                  {dbLoading ? "Đang lưu..." : "Thêm Vào Turso Cloud"}
                 </button>
               </div>
             </form>

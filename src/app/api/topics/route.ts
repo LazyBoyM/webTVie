@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { SAMPLE_VIETNAMESE_TOPICS } from "@/lib/data";
 import { isTursoConfigured, getTursoClient, ensureTursoTables } from "@/lib/turso";
 
@@ -37,29 +36,6 @@ export async function GET() {
         }));
         return NextResponse.json({ success: true, source: "turso", data: parsed });
       }
-      return NextResponse.json({ success: true, source: "fallback", data: SAMPLE_VIETNAMESE_TOPICS });
-    }
-
-    const db = getDb();
-    const rows = db
-      .prepare(
-        "SELECT id, name, grade, total_questions as questionCount, icon, description, COALESCE(is_active, 0) as is_active FROM topics ORDER BY grade ASC"
-      )
-      .all() as TopicDbRow[];
-
-    if (rows && rows.length > 0) {
-      const parsed = rows.map((r) => ({
-        id: r.id,
-        name: r.name,
-        grade: r.grade,
-        questionCount: r.questionCount,
-        icon: r.icon || "📖",
-        description: r.description || "",
-        isActive: Boolean(r.is_active),
-        category: "tu-loai",
-        categoryName: "Chuyên Đề Tiếng Việt",
-      }));
-      return NextResponse.json({ success: true, source: "sqlite", data: parsed });
     }
     return NextResponse.json({ success: true, source: "fallback", data: SAMPLE_VIETNAMESE_TOPICS });
   } catch {
@@ -75,43 +51,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Tên đề ôn tập là bắt buộc" }, { status: 400 });
     }
 
-    const id = `topic_${Date.now()}`;
-
-    if (isTursoConfigured()) {
-      const turso = getTursoClient()!;
-      await ensureTursoTables(turso);
-      await turso.execute({
-        sql: `INSERT INTO topics (id, name, grade, total_questions, icon, description, is_active)
-              VALUES (?, ?, ?, 0, ?, ?, 0)`,
-        args: [id, name.trim(), grade || 4, icon || "📖", description || `Chuyên đề ôn tập ${name.trim()}`],
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: "Đã thêm đề ôn tập mới vào Turso Cloud",
-        data: {
-          id,
-          name: name.trim(),
-          grade: grade || 4,
-          questionCount: 0,
-          icon: icon || "📖",
-          description: description || `Chuyên đề ôn tập ${name.trim()}`,
-          isActive: false,
-          category: "tu-loai",
-          categoryName: "Chuyên Đề Tiếng Việt",
-        },
-      });
+    if (!isTursoConfigured()) {
+      return NextResponse.json({ success: false, message: "Chưa cấu hình CSDL Turso Cloud" }, { status: 500 });
     }
 
-    const db = getDb();
-    db.prepare(
-      `INSERT INTO topics (id, name, grade, total_questions, icon, description, is_active)
-       VALUES (?, ?, ?, 0, ?, ?, 0)`
-    ).run(id, name.trim(), grade || 4, icon || "📖", description || `Chuyên đề ôn tập ${name.trim()}`);
+    const id = `topic_${Date.now()}`;
+    const turso = getTursoClient()!;
+    await ensureTursoTables(turso);
+
+    await turso.execute({
+      sql: `INSERT INTO topics (id, name, grade, total_questions, icon, description, is_active)
+            VALUES (?, ?, ?, 0, ?, ?, 0)`,
+      args: [id, name.trim(), grade || 4, icon || "📖", description || `Chuyên đề ôn tập ${name.trim()}`],
+    });
 
     return NextResponse.json({
       success: true,
-      message: "Đã thêm đề ôn tập mới vào CSDL SQLite",
+      message: "Đã thêm đề ôn tập mới vào Turso Cloud",
       data: {
         id,
         name: name.trim(),
@@ -138,21 +94,18 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: false, message: "Thiếu topicId" }, { status: 400 });
     }
 
-    if (isTursoConfigured()) {
-      const turso = getTursoClient()!;
-      await ensureTursoTables(turso);
-      await turso.execute({
-        sql: "UPDATE topics SET is_active = CASE WHEN id = ? THEN 1 ELSE 0 END",
-        args: [topicId],
-      });
-      return NextResponse.json({ success: true, message: "Đã giao đề ôn tập này cho cả lớp thành công trên Turso Cloud!" });
+    if (!isTursoConfigured()) {
+      return NextResponse.json({ success: false, message: "Chưa cấu hình CSDL Turso Cloud" }, { status: 500 });
     }
 
-    const db = getDb();
-    // Kích hoạt duy nhất đề được chọn
-    db.prepare("UPDATE topics SET is_active = CASE WHEN id = ? THEN 1 ELSE 0 END").run(topicId);
+    const turso = getTursoClient()!;
+    await ensureTursoTables(turso);
+    await turso.execute({
+      sql: "UPDATE topics SET is_active = CASE WHEN id = ? THEN 1 ELSE 0 END",
+      args: [topicId],
+    });
 
-    return NextResponse.json({ success: true, message: "Đã giao đề ôn tập này cho cả lớp thành công!" });
+    return NextResponse.json({ success: true, message: "Đã giao đề ôn tập này cho cả lớp thành công trên Turso Cloud!" });
   } catch (err: unknown) {
     const error = err as { message?: string };
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
