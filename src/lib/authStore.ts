@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { StudentProfile } from "./data";
+import { StudentProfile, calculateLevel } from "./data";
 import { getClassStudents, saveClassStudents, updateStudentProgress } from "./dataStore";
 
 const STUDENT_STORAGE_KEY = "eduspark_active_student";
@@ -144,30 +144,43 @@ export function useAuth() {
     saveStoredTeacher(null);
   };
 
-  const addStudentXp = (xpEarned: number) => {
+  const addStudentXp = async (xpEarned: number) => {
     if (!student) return;
-    const newXp = student.xp + xpEarned;
-    const newLevel = Math.max(1, Math.floor(newXp / 500) + 1);
-    const updated = {
+    const newXp = (Number(student.xp) || 0) + xpEarned;
+    const levelInfo = calculateLevel(newXp);
+    const newLevel = levelInfo.level;
+    const updated: StudentProfile = {
       ...student,
       xp: newXp,
       level: newLevel,
-      completedQuizzes: student.completedQuizzes + 1,
+      completedQuizzes: (Number(student.completedQuizzes) || 0) + 1,
     };
+    // 1. Lưu ngay vào local storage & state học sinh hiện tại
     saveStoredStudent(updated);
+
+    // 2. Cập nhật ngay danh sách lớp học ở Local (Optimistic UI tức thì)
     updateStudentProgress(student.studentId, xpEarned);
 
-    // Sync XP to Turso Cloud in background
+    // 3. Đồng bộ lên Turso Cloud và đợi ghi xong
     if (typeof window !== "undefined") {
-      fetch("/api/students", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: student.studentId,
-          xpDelta: xpEarned,
-          gemsDelta: Math.floor(xpEarned / 5),
-        }),
-      }).catch(() => {});
+      try {
+        await fetch("/api/students", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: student.studentId,
+            xpDelta: xpEarned,
+            gemsDelta: Math.floor(xpEarned / 5),
+          }),
+        });
+      } catch (e) {
+        console.error("Lỗi đồng bộ Turso:", e);
+      }
+    }
+
+    // 4. Phát sự kiện để Bảng thành tích tải lại dữ liệu mới nhất từ Turso
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("eduspark_class_change"));
     }
   };
 

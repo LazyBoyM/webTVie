@@ -6,6 +6,7 @@ import {
   Question,
   VocabularyItem,
   DEFAULT_VOCABULARY_NOTES,
+  calculateLevel,
 } from "./data";
 
 const CLASS_STORAGE_KEY = "eduspark_class_roster";
@@ -216,13 +217,13 @@ export function updateStudentProgress(studentId: string, xpGained: number) {
   const current = getClassStudents();
   const updated = current.map((st) => {
     if (st.studentId.toUpperCase() === studentId.toUpperCase()) {
-      const newXp = st.xp + xpGained;
-      const newLevel = Math.max(1, Math.floor(newXp / 500) + 1);
+      const newXp = (Number(st.xp) || 0) + xpGained;
+      const newLevel = calculateLevel(newXp).level;
       return {
         ...st,
         xp: newXp,
         level: newLevel,
-        completedQuizzes: st.completedQuizzes + 1,
+        completedQuizzes: (Number(st.completedQuizzes) || 0) + 1,
       };
     }
     return st;

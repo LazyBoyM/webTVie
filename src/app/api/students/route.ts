@@ -39,12 +39,14 @@ export async function PUT(req: Request) {
 
     if (name !== undefined || avatar !== undefined || grade !== undefined) {
       await turso.execute({
-        sql: "UPDATE students SET name = COALESCE(?, name), avatar = COALESCE(?, avatar), grade = COALESCE(?, grade) WHERE id = ?",
+        sql: "UPDATE students SET name = COALESCE(?, name), avatar = COALESCE(?, avatar), grade = COALESCE(?, grade) WHERE UPPER(id) = UPPER(?)",
         args: [name ?? null, avatar ?? null, grade ?? null, id],
       });
     }
 
     if (xpDelta !== undefined || gemsDelta !== undefined || streak !== undefined) {
+      const numXp = Number(xpDelta) || 0;
+      const numGems = Number(gemsDelta) || 0;
       await turso.execute({
         sql: `UPDATE students 
               SET xp = xp + ?, 
@@ -52,8 +54,8 @@ export async function PUT(req: Request) {
                   streak = COALESCE(?, streak), 
                   level = CAST((xp + ?) / 300 AS INT) + 1,
                   last_active = 'Hôm nay'
-              WHERE id = ?`,
-        args: [xpDelta || 0, gemsDelta || 0, streak ?? null, xpDelta || 0, id],
+              WHERE UPPER(id) = UPPER(?)`,
+        args: [numXp, numGems, streak ?? null, numXp, id],
       });
     }
 

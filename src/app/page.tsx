@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
-import { useAuth } from "@/lib/authStore";
+import { useAuth, getStoredStudent } from "@/lib/authStore";
 import { sound } from "@/lib/soundEffects";
 import { BADGES, calculateLevel, StudentProfile, VietnameseTopic } from "@/lib/data";
-import { getClassStudents, getActiveVietnameseTopic } from "@/lib/dataStore";
+import { getClassStudents, saveClassStudents, getActiveVietnameseTopic } from "@/lib/dataStore";
 import SpeedQuizGame from "@/components/games/SpeedQuizGame";
 import MemoryFlipGame from "@/components/games/MemoryFlipGame";
 import WordScrambleGame from "@/components/games/WordScrambleGame";
@@ -16,12 +16,12 @@ import SentenceBuilderGame from "@/components/games/SentenceBuilderGame";
 import VocabularyNotebookModal from "@/components/VocabularyNotebookModal";
 import AuthModal from "@/components/AuthModal";
 import AvatarModal from "@/components/AvatarModal";
+import GameCardArtwork from "@/components/GameCardArtwork";
 import {
   Sparkles,
   Trophy,
   Flame,
   BookOpen,
-  ArrowRight,
   Play
 } from "lucide-react";
 
@@ -46,16 +46,43 @@ export default function HomePage() {
   const [activeTopic, setActiveTopic] = useState<VietnameseTopic | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
 
-  // Nạp dữ liệu học sinh & chuyên đề từ SQLite
+  // Nạp dữ liệu học sinh & chuyên đề từ Turso Cloud + Optimistic Local Storage
   const loadData = async () => {
     try {
-      // 1. Học sinh
+      // 1. Học sinh: Lấy dữ liệu local trước để hiển thị tức thì
+      const localStudents = getClassStudents();
+      const currentStoredStudent = getStoredStudent();
+
       const sRes = await fetch("/api/students");
       const sData = await sRes.json();
       if (sData.success && Array.isArray(sData.data)) {
-        setClassList(sData.data);
+        // Hợp nhất dữ liệu Turso với điểm số XP cao nhất cục bộ để không bao giờ bị ghi đè lùi điểm
+        const merged = (sData.data as StudentProfile[]).map((remote) => {
+          const localMatch = localStudents.find(
+            (l) => l.studentId.toUpperCase() === remote.studentId.toUpperCase()
+          );
+          const higherXp = Math.max(
+            Number(remote.xp) || 0,
+            localMatch ? Number(localMatch.xp) || 0 : 0,
+            currentStoredStudent && currentStoredStudent.studentId.toUpperCase() === remote.studentId.toUpperCase()
+              ? Number(currentStoredStudent.xp) || 0
+              : 0
+          );
+          const higherLevel = calculateLevel(higherXp).level;
+          return {
+            ...remote,
+            xp: higherXp,
+            level: higherLevel,
+            avatar:
+              currentStoredStudent && currentStoredStudent.studentId.toUpperCase() === remote.studentId.toUpperCase()
+                ? currentStoredStudent.avatar || remote.avatar
+                : (localMatch?.avatar || remote.avatar),
+          };
+        });
+        setClassList(merged);
+        saveClassStudents(merged);
       } else {
-        setClassList(getClassStudents());
+        setClassList(localStudents);
       }
 
       // 2. Chuyên đề đang kích hoạt
@@ -76,17 +103,40 @@ export default function HomePage() {
   useEffect(() => {
     loadData();
 
-    const handleClassChange = () => loadData();
+    const handleClassChange = () => {
+      // Khi có sự kiện class change, hiển thị ngay từ local storage trước
+      const current = getClassStudents();
+      if (current && current.length > 0) {
+        setClassList(current);
+      }
+      loadData();
+    };
     const handleTopicChange = () => loadData();
 
     window.addEventListener("eduspark_class_change", handleClassChange);
     window.addEventListener("eduspark_topics_change", handleTopicChange);
+    window.addEventListener("eduspark_auth_change", handleClassChange);
 
     return () => {
       window.removeEventListener("eduspark_class_change", handleClassChange);
       window.removeEventListener("eduspark_topics_change", handleTopicChange);
+      window.removeEventListener("eduspark_auth_change", handleClassChange);
     };
   }, []);
+
+  // Khi student thay đổi trong useAuth, cập nhật ngay lập tức vào classList (Optimistic UI tức thì)
+  useEffect(() => {
+    if (student) {
+      setClassList((prev) => {
+        if (!prev || prev.length === 0) return getClassStudents();
+        return prev.map((s) =>
+          s.studentId.toUpperCase() === student.studentId.toUpperCase()
+            ? { ...s, xp: student.xp, level: student.level, avatar: student.avatar }
+            : s
+        );
+      });
+    }
+  }, [student]);
 
   const sortedStudents = [...classList].sort((a, b) => b.xp - a.xp);
   const studentLevelData = student ? calculateLevel(student.xp) : null;
@@ -101,91 +151,63 @@ export default function HomePage() {
     setActiveGame(game);
   };
 
-  // Danh sách các bài tập ôn luyện trọng tâm
+  // Danh sách các minigame trực quan, ít chữ
   const gamesList = [
     {
       id: "speed-quiz" as GameType,
       category: "speed" as CategoryFilter,
       title: "Vua Tiếng Việt",
-      subtitle: "Trắc nghiệm đề cô giao • 15s/câu",
-      description: "Thử thách trắc nghiệm nhanh theo đúng ngân hàng câu hỏi cô giáo vừa biên soạn và giao cho lớp.",
-      icon: "⚡",
-      iconBg: "bg-indigo-50 text-indigo-600 border-indigo-100",
-      tag: "Trắc nghiệm tốc độ",
-      badge: "Cô Giao Ôn Tập",
-      reward: "+60 XP",
+      tag: "⚡ 15s Trắc Nghiệm",
+      reward: "+120 XP",
+      buttonColor: "bg-amber-500 hover:bg-amber-600 text-slate-950",
     },
     {
       id: "sorting-basket" as GameType,
       category: "classify" as CategoryFilter,
-      title: "Kéo Thả Phân Loại",
-      subtitle: "Danh từ, Động từ, Tính từ",
-      description: "Phân loại trực quan các từ ngữ vào đúng giỏ học tập (từ đơn/ghép/láy, biện pháp tu từ so sánh/nhân hóa).",
-      icon: "🧺",
-      iconBg: "bg-purple-50 text-purple-600 border-purple-100",
-      tag: "Kéo thả từ loại",
-      badge: "Hiểu sâu ngữ pháp",
-      reward: "+80 XP",
+      title: "Kéo Thả Vào Giỏ",
+      tag: "🧺 Phân Loại Từ",
+      reward: "+100 XP",
+      buttonColor: "bg-purple-600 hover:bg-purple-700 text-white",
     },
     {
       id: "sentence-builder" as GameType,
       category: "sentence" as CategoryFilter,
       title: "Bắt Chữ Hoàn Câu",
-      subtitle: "Trật tự câu & Dấu câu",
-      description: "Sắp xếp các cụm từ bị đảo lộn thành câu văn chuẩn mực, đúng ngữ pháp và cách đặt dấu câu.",
-      icon: "✍️",
-      iconBg: "bg-sky-50 text-sky-600 border-sky-100",
-      tag: "Ghép câu hoàn chỉnh",
-      badge: "Luyện kỹ năng viết",
-      reward: "+75 XP",
+      tag: "🚂 Ghép Toa Tàu",
+      reward: "+80 XP",
+      buttonColor: "bg-sky-600 hover:bg-sky-700 text-white",
     },
     {
       id: "laser-match" as GameType,
       category: "match" as CategoryFilter,
-      title: "Nối Cột Từ Ngữ Laser",
-      subtitle: "Đồng nghĩa, Trái nghĩa & Ca dao",
-      description: "Nối cặp khái niệm tương ứng: từ đồng nghĩa, từ trái nghĩa, giải nghĩa thành ngữ và tục ngữ dân gian.",
-      icon: "🔗",
-      iconBg: "bg-emerald-50 text-emerald-600 border-emerald-100",
-      tag: "Nối cặp ngữ nghĩa",
-      badge: "Mở rộng vốn từ",
-      reward: "+70 XP",
+      title: "Nối Dây Laser",
+      tag: "⚡ Tia Laser Nối Cặp",
+      reward: "+200 XP",
+      buttonColor: "bg-emerald-600 hover:bg-emerald-700 text-white",
     },
     {
       id: "word-scramble" as GameType,
       category: "sentence" as CategoryFilter,
       title: "Thánh Chính Tả",
-      subtitle: "Phân biệt tr/ch, s/x, d/gi/r",
-      description: "Nhận biết và sửa các lỗi chính tả phổ biến trong tiếng Việt, rèn thói quen viết đúng âm vần.",
-      icon: "🔤",
-      iconBg: "bg-amber-50 text-amber-600 border-amber-100",
-      tag: "Rèn chữ & chính tả",
-      badge: "Chuẩn ngữ âm",
-      reward: "+70 XP",
+      tag: "🔍 Sửa Chính Tả",
+      reward: "+150 XP",
+      buttonColor: "bg-orange-500 hover:bg-orange-600 text-white",
     },
     {
       id: "true-false" as GameType,
       category: "speed" as CategoryFilter,
-      title: "Đúng Hay Sai Tiếng Việt",
-      subtitle: "Thử thách 10 giây phản xạ",
-      description: "Đánh giá tính đúng/sai của câu văn, cấu trúc ngữ pháp và cách dùng từ ngữ trong thời gian ngắn.",
-      icon: "❓",
-      iconBg: "bg-rose-50 text-rose-600 border-rose-100",
-      tag: "Phán đoán siêu tốc",
-      badge: "Phản xạ nhanh",
-      reward: "+90 XP",
+      title: "Đúng Hay Sai",
+      tag: "❓ Phản Xạ 10 Giây",
+      reward: "+120 XP",
+      buttonColor: "bg-rose-600 hover:bg-rose-700 text-white",
     },
     {
       id: "memory-flip" as GameType,
       category: "match" as CategoryFilter,
-      title: "Lật Thẻ Trí Nhớ Từ Ngữ",
-      subtitle: "Ghi nhớ từ vựng lâu dài",
-      description: "Lật các thẻ bài để ghép đúng cặp từ đồng nghĩa, trái nghĩa. Rèn luyện trí nhớ và sự tập trung.",
-      icon: "🃏",
-      iconBg: "bg-teal-50 text-teal-600 border-teal-100",
-      tag: "Trí nhớ thị giác",
-      badge: "Ghi nhớ bền vững",
-      reward: "+65 XP",
+      title: "Lật Thẻ Trí Nhớ",
+      tag: "🃏 Cặp Thẻ Bí Ẩn",
+      reward: "+200 XP",
+      buttonColor: "bg-teal-600 hover:bg-teal-700 text-white",
     },
   ];
 
@@ -365,41 +387,50 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Grid Games */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {/* Grid Games - Trực Quan Bằng Hình Ảnh, Ít Chữ */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filteredGames.map((g) => (
               <div
                 key={g.id}
-                className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-indigo-300 transition flex flex-col justify-between space-y-4"
+                onClick={() => handleStartGame(g.id)}
+                className="group relative bg-white rounded-3xl overflow-hidden border-2 border-slate-200/80 shadow-xs hover:shadow-xl hover:border-indigo-400 hover:-translate-y-1.5 transition-all duration-300 cursor-pointer flex flex-col justify-between"
               >
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`w-10 h-10 rounded-xl border flex items-center justify-center text-xl font-bold ${g.iconBg}`}>
-                      {g.icon}
-                    </div>
-                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                      {g.reward}
+                {/* Visual Artwork Banner (Hình Ảnh Trực Quan Cho Từng Game) */}
+                <div className="relative h-36 w-full overflow-hidden flex items-center justify-center">
+                  <div className="w-full h-full transform group-hover:scale-105 transition-transform duration-300">
+                    <GameCardArtwork gameId={g.id} />
+                  </div>
+
+                  {/* Floating Tag */}
+                  <div className="absolute top-3 left-3 px-2.5 py-1 rounded-xl bg-white/95 backdrop-blur-md text-slate-800 text-[11px] font-bold shadow-xs">
+                    {g.tag}
+                  </div>
+
+                  {/* Floating Reward Pill */}
+                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-xl bg-slate-900/80 backdrop-blur-md border border-white/20 text-amber-300 text-xs font-black shadow-xs flex items-center gap-1">
+                    <span>⭐</span> {g.reward}
+                  </div>
+                </div>
+
+                {/* Card Bottom Bar (Tiêu Đề Lớn & Nút Chơi Ngay - Không Rườm Rà Chữ) */}
+                <div className="p-4 flex items-center justify-between gap-3 bg-white">
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 group-hover:text-indigo-600 transition">
+                      {g.title}
+                    </h3>
+                    <span className="text-[11px] font-semibold text-slate-400 block mt-0.5">
+                      Chạm để vào chơi ngay
                     </span>
                   </div>
 
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 block mb-1">
-                    {g.tag}
-                  </span>
-
-                  <h3 className="text-base font-bold text-slate-900">{g.title}</h3>
-                  <p className="text-xs font-semibold text-slate-400 mt-0.5 mb-2">{g.subtitle}</p>
-                  <p className="text-xs text-slate-600 leading-relaxed line-clamp-3 font-normal">
-                    {g.description}
-                  </p>
-                </div>
-
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400 font-medium">{g.badge}</span>
                   <button
-                    onClick={() => handleStartGame(g.id)}
-                    className="px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 text-xs font-bold transition flex items-center gap-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStartGame(g.id);
+                    }}
+                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-1.5 shadow-xs group-hover:scale-105 ${g.buttonColor}`}
                   >
-                    Bắt Đầu <ArrowRight className="w-3 h-3" />
+                    <Play className="w-3.5 h-3.5 fill-current" /> Chơi
                   </button>
                 </div>
               </div>
@@ -419,7 +450,7 @@ export default function HomePage() {
               Bảng Vàng Danh Dự Lớp 4A
             </h2>
             <p className="text-xs text-slate-500">
-              Điểm số được đồng bộ trực tiếp từ kết quả làm bài tập của học sinh trong CSDL SQLite
+              Điểm số được đồng bộ trực tiếp từ kết quả làm bài tập của học sinh qua Turso Cloud
             </p>
           </div>
 
