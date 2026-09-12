@@ -20,11 +20,12 @@ import {
   HelpCircle,
   FolderPlus,
   ShieldCheck,
-  UserPlus
+  UserPlus,
+  Edit3
 } from "lucide-react";
 
 export default function TeacherPage() {
-  const { teacher, loginAsTeacher } = useAuth();
+  const { teacher, loginAsTeacher, updateTeacherProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<"topics" | "questions" | "students">("topics");
 
   // State dữ liệu
@@ -284,6 +285,56 @@ export default function TeacherPage() {
     }
   };
 
+  // Xử lý Sửa Tên Học Sinh
+  const handleEditStudent = async (st: StudentProfile) => {
+    const newName = prompt(`Nhập tên mới cho học sinh (${st.studentId}):`, st.name);
+    if (!newName || !newName.trim() || newName.trim() === st.name) return;
+    sound.playClick();
+    setDbLoading(true);
+    try {
+      const res = await fetch("/api/students", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: st.studentId,
+          name: newName.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        sound.playVictory();
+        await loadData();
+      } else {
+        alert("Lỗi cập nhật: " + data.message);
+      }
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      alert("Lỗi: " + error.message);
+    } finally {
+      setDbLoading(false);
+    }
+  };
+
+  // Xử lý Sửa Thông Tin Cô Giáo
+  const handleEditTeacherProfile = () => {
+    const currentName = teacher?.name || DEMO_TEACHER.name;
+    const currentSchool = teacher?.schoolName || DEMO_TEACHER.schoolName;
+    const currentClass = teacher?.className || DEMO_TEACHER.className;
+
+    const newName = prompt("Nhập tên cô giáo:", currentName);
+    if (!newName || !newName.trim()) return;
+    const newSchool = prompt("Nhập tên trường học:", currentSchool);
+    const newClass = prompt("Nhập tên lớp phụ trách:", currentClass);
+
+    updateTeacherProfile({
+      name: newName.trim(),
+      schoolName: newSchool?.trim() || currentSchool,
+      className: newClass?.trim() || currentClass,
+    });
+    sound.playVictory();
+    alert("Đã cập nhật thông tin cô giáo thành công!");
+  };
+
   // Đồng bộ lại dữ liệu
   const handleSyncData = async () => {
     sound.playClick();
@@ -381,7 +432,14 @@ export default function TeacherPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={handleEditTeacherProfile}
+                className="px-3.5 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl text-xs transition backdrop-blur-sm flex items-center gap-1.5"
+                title="Thay đổi tên cô giáo, trường và lớp"
+              >
+                <Edit3 className="w-3.5 h-3.5" /> Đổi Thông Tin Cô Giáo
+              </button>
               <Link
                 href="/"
                 className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-xs transition backdrop-blur-sm"
@@ -749,13 +807,22 @@ export default function TeacherPage() {
                           <span className="text-amber-500 font-bold">🔥 {st.streak} ngày</span>
                         </td>
                         <td className="py-3.5 px-4 text-right">
-                          <button
-                            onClick={() => handleDeleteStudent(st.studentId, st.name)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                            title="Xóa học sinh khỏi lớp"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleEditStudent(st)}
+                              className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                              title="Sửa tên học sinh này"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStudent(st.studentId, st.name)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                              title="Xóa học sinh khỏi lớp"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

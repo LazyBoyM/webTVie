@@ -192,7 +192,12 @@ export function getClassStudents(): StudentProfile[] {
   const saved = localStorage.getItem(CLASS_STORAGE_KEY);
   if (saved) {
     try {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.some((s: Partial<StudentProfile>) => s?.name === "Nguyễn Gia Bảo" || s?.name === "Đỗ Quốc Cường")) {
+        localStorage.setItem(CLASS_STORAGE_KEY, JSON.stringify(SAMPLE_STUDENTS));
+        return SAMPLE_STUDENTS;
+      }
+      return parsed;
     } catch {
       return SAMPLE_STUDENTS;
     }

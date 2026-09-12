@@ -17,11 +17,11 @@ export interface TeacherProfile {
 }
 
 export const DEMO_TEACHER: TeacherProfile = {
-  id: "teacher_01",
-  name: "Cô Nguyễn Mai Lan",
-  email: "mailan.edu@gmail.com",
-  schoolName: "Trường Tiểu Học & THCS Ánh Dương",
-  className: "Khối 4 & 5",
+  id: "GV01",
+  name: "Cô Giáo",
+  email: "giaovien@gmail.com",
+  schoolName: "Trường Tiểu Học",
+  className: "Lớp 4A",
   role: "teacher",
 };
 
@@ -175,12 +175,19 @@ export function useAuth() {
     saveClassStudents(updatedClass);
   };
 
+  const updateTeacherProfile = (updated: Partial<TeacherProfile>) => {
+    const current = getStoredTeacher() || DEMO_TEACHER;
+    const next: TeacherProfile = { ...current, ...updated };
+    saveStoredTeacher(next);
+  };
+
   return {
     student,
     teacher,
     loading,
     loginAsStudent,
     loginAsTeacher,
+    updateTeacherProfile,
     logout,
     addStudentXp,
     updateStudentAvatar,

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/authStore";
 import { sound } from "@/lib/soundEffects";
+import { getClassStudents } from "@/lib/dataStore";
+import { StudentProfile } from "@/lib/data";
 import { Sparkles, QrCode, User, LogIn, KeyRound, CheckCircle2 } from "lucide-react";
 
 interface AuthModalProps {
@@ -16,7 +18,14 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "student" }: A
   const [studentId, setStudentId] = useState("");
   const [pin, setPin] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [classList, setClassList] = useState<StudentProfile[]>([]);
   const { loginAsStudent, loginAsTeacher } = useAuth();
+
+  useEffect(() => {
+    if (isOpen) {
+      setClassList(getClassStudents());
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -73,37 +82,37 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "student" }: A
           <p className="text-spark-100 text-sm mt-1">
             {tab === "student"
               ? "Nhập mã học sinh để lưu điểm và nhận thưởng"
-              : "Quản lý bài giảng, tạo quiz AI và xem tiến độ"}
+              : "Quản lý bài tập, ngân hàng đề và theo dõi học sinh"}
           </p>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex border-b border-slate-100 p-2 bg-slate-50">
+        <div className="flex border-b border-slate-100 bg-slate-50 p-1.5 gap-1.5">
           <button
             onClick={() => {
               sound.playClick();
               setTab("student");
             }}
-            className={`flex-1 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition ${
+            className={`flex-1 py-2.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition ${
               tab === "student"
-                ? "bg-white text-spark-600 shadow-sm border border-slate-200"
-                : "text-slate-500 hover:text-slate-700"
+                ? "bg-white text-spark-600 shadow-xs"
+                : "text-slate-500 hover:text-slate-800"
             }`}
           >
-            <User className="w-4 h-4" /> Dành Cho Học Sinh
+            <User className="w-4 h-4" /> Học Sinh
           </button>
           <button
             onClick={() => {
               sound.playClick();
               setTab("teacher");
             }}
-            className={`flex-1 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition ${
+            className={`flex-1 py-2.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition ${
               tab === "teacher"
-                ? "bg-white text-spark-600 shadow-sm border border-slate-200"
-                : "text-slate-500 hover:text-slate-700"
+                ? "bg-white text-spark-600 shadow-xs"
+                : "text-slate-500 hover:text-slate-800"
             }`}
           >
-            <KeyRound className="w-4 h-4" /> Dành Cho Giáo Viên
+            <KeyRound className="w-4 h-4" /> Cô Giáo
           </button>
         </div>
 
@@ -114,7 +123,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "student" }: A
               <form onSubmit={handleStudentSubmit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                    Mã Học Sinh Của Em
+                    Mã Học Sinh (ID Thẻ)
                   </label>
                   <div className="relative">
                     <input
@@ -142,21 +151,17 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "student" }: A
                     <p className="text-xs font-bold text-spark-700 mb-2">
                       Mô phỏng quét mã thẻ học sinh bằng camera:
                     </p>
-                    <div className="flex justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => simulateQrScan("HS01")}
-                        className="px-3 py-1 bg-spark-600 text-white text-xs font-bold rounded-lg hover:bg-spark-700"
-                      >
-                        Quét Thẻ HS01
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => simulateQrScan("HS02")}
-                        className="px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700"
-                      >
-                        Quét Thẻ HS02
-                      </button>
+                    <div className="flex justify-center gap-2 flex-wrap">
+                      {classList.slice(0, 3).map((st) => (
+                        <button
+                          key={st.studentId}
+                          type="button"
+                          onClick={() => simulateQrScan(st.studentId)}
+                          className="px-3 py-1 bg-spark-600 text-white text-xs font-bold rounded-lg hover:bg-spark-700 transition"
+                        >
+                          Quét {st.studentId}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -185,36 +190,23 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "student" }: A
 
               <div className="pt-3 border-t border-slate-100">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-center mb-2.5">
-                  ⚡ Chọn nhanh học sinh mẫu:
+                  ⚡ Chọn nhanh tài khoản học sinh:
                 </p>
                 <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickStudent("HS01")}
-                    className="p-2 text-center bg-slate-50 hover:bg-spark-50 rounded-xl border border-slate-200 hover:border-spark-300 transition group"
-                  >
-                    <span className="text-xl block mb-1">🦊</span>
-                    <span className="block text-xs font-bold text-slate-700 group-hover:text-spark-600">Gia Bảo</span>
-                    <span className="block text-[10px] text-slate-400">Mã: HS01</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickStudent("HS02")}
-                    className="p-2 text-center bg-slate-50 hover:bg-spark-50 rounded-xl border border-slate-200 hover:border-spark-300 transition group"
-                  >
-                    <span className="text-xl block mb-1">🐼</span>
-                    <span className="block text-xs font-bold text-slate-700 group-hover:text-spark-600">Minh Anh</span>
-                    <span className="block text-[10px] text-slate-400">Mã: HS02</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickStudent("HS03")}
-                    className="p-2 text-center bg-slate-50 hover:bg-spark-50 rounded-xl border border-slate-200 hover:border-spark-300 transition group"
-                  >
-                    <span className="text-xl block mb-1">🦁</span>
-                    <span className="block text-xs font-bold text-slate-700 group-hover:text-spark-600">Tuấn Kiệt</span>
-                    <span className="block text-[10px] text-slate-400">Mã: HS03</span>
-                  </button>
+                  {classList.slice(0, 3).map((st) => (
+                    <button
+                      key={st.studentId}
+                      type="button"
+                      onClick={() => handleQuickStudent(st.studentId)}
+                      className="p-2 text-center bg-slate-50 hover:bg-spark-50 rounded-xl border border-slate-200 hover:border-spark-300 transition group"
+                    >
+                      <span className="text-xl block mb-1">{st.avatar || "🦊"}</span>
+                      <span className="block text-xs font-bold text-slate-700 group-hover:text-spark-600 truncate">
+                        {st.name}
+                      </span>
+                      <span className="block text-[10px] text-slate-400 font-mono">Mã: {st.studentId}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -223,11 +215,11 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "student" }: A
               <form onSubmit={handleTeacherSubmit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                    Email Giáo Viên
+                    Email Cô Giáo
                   </label>
                   <input
                     type="email"
-                    defaultValue="mailan.edu@gmail.com"
+                    defaultValue="giaovien@gmail.com"
                     className="w-full px-4 py-2.5 text-base bg-slate-50 border-2 border-slate-200 rounded-2xl focus:bg-white focus:border-spark-500 focus:outline-none transition"
                   />
                 </div>
@@ -245,12 +237,12 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "student" }: A
                   type="submit"
                   className="w-full py-3.5 text-white font-black text-lg rounded-2xl btn-game-green flex items-center justify-center gap-2"
                 >
-                  <CheckCircle2 className="w-5 h-5" /> Vào Bảng Điều Khiển Giáo Viên
+                  <CheckCircle2 className="w-5 h-5" /> Vào Bảng Quản Trị Của Cô Giáo
                 </button>
               </form>
 
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-800">
-                💡 <strong>Dành cho trải nghiệm thử:</strong> Bạn có thể bấm nút trên để đăng nhập ngay vào tài khoản mẫu của <strong>Cô Nguyễn Mai Lan</strong>.
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800">
+                💡 <strong>Dành cho cô giáo:</strong> Bấm nút trên để vào Bảng Quản Trị lớp học, đổi thông tin cô giáo, sửa tên hoặc thêm học sinh.
               </div>
             </div>
           )}

@@ -24,22 +24,37 @@ export async function GET() {
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    const { id, xpDelta, gemsDelta, streak } = body;
+    const { id, name, avatar, grade, xpDelta, gemsDelta, streak } = body;
     if (!id) {
       return NextResponse.json({ success: false, message: "Thiếu student id" }, { status: 400 });
     }
 
     const db = getDb();
-    const update = db.prepare(`
-      UPDATE students 
-      SET xp = xp + ?, 
-          gems = gems + ?, 
-          streak = COALESCE(?, streak), 
-          level = CAST((xp + ?) / 300 AS INT) + 1,
-          last_active = 'Hôm nay'
-      WHERE id = ?
-    `);
-    update.run(xpDelta || 0, gemsDelta || 0, streak ?? null, xpDelta || 0, id);
+
+    // Cập nhật thông tin định danh học sinh (tên, avatar, khối lớp)
+    if (name !== undefined || avatar !== undefined || grade !== undefined) {
+      db.prepare(`
+        UPDATE students
+        SET name = COALESCE(?, name),
+            avatar = COALESCE(?, avatar),
+            grade = COALESCE(?, grade)
+        WHERE id = ?
+      `).run(name ?? null, avatar ?? null, grade ?? null, id);
+    }
+
+    // Cập nhật điểm XP / gems / streak nếu có
+    if (xpDelta !== undefined || gemsDelta !== undefined || streak !== undefined) {
+      const update = db.prepare(`
+        UPDATE students 
+        SET xp = xp + ?, 
+            gems = gems + ?, 
+            streak = COALESCE(?, streak), 
+            level = CAST((xp + ?) / 300 AS INT) + 1,
+            last_active = 'Hôm nay'
+        WHERE id = ?
+      `);
+      update.run(xpDelta || 0, gemsDelta || 0, streak ?? null, xpDelta || 0, id);
+    }
 
     return NextResponse.json({ success: true, message: "Đã cập nhật học sinh thành công vào SQLite" });
   } catch (err: unknown) {
