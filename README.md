@@ -9,7 +9,7 @@
 ### 👩‍🏫 1. Tài Khoản Cô Giáo (Quản trị lớp & soạn bài)
 * **Email:** `giaovien@gmail.com`
 * **Mật khẩu:** `teacher123`
-* **Cách vào:** Chọn tab **"Cô Giáo"** tại hộp đăng nhập hoặc truy cập trực tiếp đường dẫn `/teacher` (hỗ trợ nút đăng nhập nhanh 1-Click).
+* **Cách vào:** Chọn tab **"Cô Giáo"** tại hộp đăng nhập hoặc truy cập trực tiếp đường dẫn `/teacher`.
 * **Tính năng:**
   * Bấm **"✏️ Đổi Thông Tin Cô Giáo"** để tự nhập tên cô, tên trường và lớp chủ nhiệm.
   * Xem danh sách lớp, sửa tên học sinh hoặc thêm/xóa học sinh.
@@ -42,16 +42,3 @@ npm install
 # 2. Chạy máy chủ phát triển
 npm run dev
 ```
-Mở trình duyệt truy cập: [http://localhost:3000](http://localhost:3000)
-
----
-
-## 🌐 Triển Khai Link Dùng 24/7 Miễn Phí (Vercel)
-
-1. Đẩy mã nguồn lên GitHub:
-   ```bash
-   git push origin main
-   ```
-2. Truy cập [https://vercel.com](https://vercel.com) ➔ Chọn **"Continue with GitHub"**.
-3. Bấm **"Add New..."** ➔ **"Project"** ➔ Chọn repo **`webTVie`** ➔ Bấm **"Deploy"**.
-4. Vercel sẽ tự động cấp một đường link cố định 24/7 (ví dụ: `https://webtvie.vercel.app`) dùng được trên mọi thiết bị.

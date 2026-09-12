@@ -21,7 +21,8 @@ import {
   FolderPlus,
   ShieldCheck,
   UserPlus,
-  Edit3
+  Edit3,
+  AlertCircle
 } from "lucide-react";
 
 export default function TeacherPage() {
@@ -346,6 +347,32 @@ export default function TeacherPage() {
     alert("Đã làm mới dữ liệu từ CSDL SQLite thành công!");
   };
 
+  // State Đăng Nhập Cổng Giáo Viên
+  const [gateEmail, setGateEmail] = useState("");
+  const [gatePassword, setGatePassword] = useState("");
+  const [gateError, setGateError] = useState<string | null>(null);
+
+  const handleGateLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setGateError(null);
+
+    if (!gateEmail.trim() || !gatePassword.trim()) {
+      setGateError("Vui lòng nhập đầy đủ email và mật khẩu!");
+      sound.playWrong();
+      return;
+    }
+
+    sound.playClick();
+    const result = loginAsTeacher(gateEmail.trim(), gatePassword.trim());
+    if (!result.success) {
+      setGateError(result.message || "Email hoặc mật khẩu không chính xác!");
+      sound.playWrong();
+      return;
+    }
+
+    sound.playVictory();
+  };
+
   // Nếu chưa đăng nhập cô giáo
   if (!teacher) {
     return (
@@ -353,50 +380,69 @@ export default function TeacherPage() {
         <Navbar />
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="bg-white max-w-md w-full rounded-3xl p-8 border border-slate-200 shadow-xl text-center space-y-6">
-            <div className="w-20 h-20 rounded-3xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-4xl mx-auto shadow-inner">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-3xl mx-auto shadow-inner">
               👩‍🏫
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-slate-900 font-heading">Cổng Quản Trị Của Cô Giáo</h2>
+              <h2 className="text-2xl font-bold text-slate-900 font-heading">Cổng Quản Trị Giáo Viên</h2>
               <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                Tạo đề ôn tập, quản lý ngân hàng câu hỏi Tiếng Việt và theo dõi bảng thành tích của học sinh.
+                Đăng nhập để soạn đề ôn tập, quản lý học sinh và theo dõi kết quả học tập.
               </p>
             </div>
 
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-left text-xs space-y-1.5">
-              <div className="flex justify-between font-semibold text-slate-700">
-                <span>Giáo viên:</span>
-                <span>{DEMO_TEACHER.name}</span>
-              </div>
-              <div className="flex justify-between text-slate-500">
-                <span>Chủ nhiệm:</span>
-                <span>{DEMO_TEACHER.className}</span>
-              </div>
-              <div className="flex justify-between text-slate-500">
-                <span>Trường học:</span>
-                <span>{DEMO_TEACHER.schoolName}</span>
-              </div>
-            </div>
+            <form onSubmit={handleGateLogin} className="space-y-4 text-left">
+              {gateError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                  <span>{gateError}</span>
+                </div>
+              )}
 
-            <div className="space-y-2.5 pt-1">
-              <button
-                onClick={() => {
-                  sound.playClick();
-                  loginAsTeacher();
-                  sound.playVictory();
-                }}
-                className="w-full py-3.5 text-white font-bold text-sm rounded-xl bg-emerald-600 hover:bg-emerald-700 transition shadow-sm flex items-center justify-center gap-2"
-              >
-                <ShieldCheck className="w-4 h-4" /> Đăng Nhập Cô Giáo (1-Click)
-              </button>
-              <Link
-                href="/"
-                onClick={() => sound.playClick()}
-                className="block w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition text-center"
-              >
-                ← Quay Về Góc Học Sinh
-              </Link>
-            </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Email Giáo Viên
+                </label>
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  placeholder="giaovien@gmail.com"
+                  value={gateEmail}
+                  onChange={(e) => setGateEmail(e.target.value)}
+                  className="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:border-indigo-500 focus:outline-none transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Mật Khẩu
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Nhập mật khẩu..."
+                  value={gatePassword}
+                  onChange={(e) => setGatePassword(e.target.value)}
+                  className="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:border-indigo-500 focus:outline-none transition"
+                />
+              </div>
+
+              <div className="space-y-2.5 pt-2">
+                <button
+                  type="submit"
+                  className="w-full py-3 text-white font-bold text-sm rounded-xl bg-emerald-600 hover:bg-emerald-700 transition shadow-sm flex items-center justify-center gap-2"
+                >
+                  <ShieldCheck className="w-4 h-4" /> Đăng Nhập Quản Trị
+                </button>
+                <Link
+                  href="/"
+                  onClick={() => sound.playClick()}
+                  className="block w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition text-center"
+                >
+                  ← Quay Về Trang Chủ
+                </Link>
+              </div>
+            </form>
           </div>
         </div>
       </div>

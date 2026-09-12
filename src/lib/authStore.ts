@@ -95,36 +95,48 @@ export function useAuth() {
   }, []);
 
   const loginAsStudent = (studentId: string, pin?: string): { success: boolean; message?: string } => {
+    if (!studentId || !studentId.trim()) {
+      return { success: false, message: "Vui lòng nhập mã học sinh!" };
+    }
     const classList = getClassStudents();
     const found = classList.find(
       (s) => s.studentId.toUpperCase() === studentId.trim().toUpperCase()
     );
     if (!found) {
-      // Allow custom student ID creation on the fly for testing
-      const newStudent: StudentProfile = {
-        studentId: studentId.toUpperCase(),
-        pin: pin || "1234",
-        name: `Học Sinh ${studentId.toUpperCase()}`,
-        avatar: "⭐",
-        className: "Lớp 4A",
-        grade: 4,
-        xp: 150,
-        level: 1,
-        streak: 1,
-        badges: ["first_quiz"],
-        completedQuizzes: 1,
-        accuracy: 90,
+      return {
+        success: false,
+        message: `Mã học sinh "${studentId.trim().toUpperCase()}" chưa được đăng ký trong hệ thống!`,
       };
-      saveStoredStudent(newStudent);
-      saveClassStudents([...classList, newStudent]);
-      return { success: true };
+    }
+    const requiredPin = found.pin || "1234";
+    if (!pin || pin.trim() !== requiredPin) {
+      return {
+        success: false,
+        message: "Mã PIN không chính xác! Vui lòng kiểm tra lại.",
+      };
     }
     saveStoredStudent(found);
     return { success: true };
   };
 
-  const loginAsTeacher = () => {
-    saveStoredTeacher(DEMO_TEACHER);
+  const loginAsTeacher = (email?: string, password?: string): { success: boolean; message?: string } => {
+    const saved = getStoredTeacher() || DEMO_TEACHER;
+    const cleanEmail = (email || "").trim().toLowerCase();
+    const cleanPass = (password || "").trim();
+
+    if (!cleanEmail || !cleanPass) {
+      return { success: false, message: "Vui lòng nhập đầy đủ email và mật khẩu giáo viên!" };
+    }
+
+    const validEmail = (saved.email || "giaovien@gmail.com").toLowerCase();
+    const validPass = "teacher123";
+
+    if (cleanEmail !== validEmail || cleanPass !== validPass) {
+      return { success: false, message: "Email hoặc mật khẩu không chính xác!" };
+    }
+
+    saveStoredTeacher(saved);
+    return { success: true };
   };
 
   const logout = () => {

@@ -306,7 +306,7 @@ export default function HomePage() {
                     <span className="text-3xl block">👋</span>
                     <h3 className="font-bold text-slate-900 text-base">Em Chưa Đăng Nhập</h3>
                     <p className="text-xs text-slate-500">
-                      Đăng nhập nhanh để lưu lại điểm thưởng XP và ghi danh lên Bảng Vàng của lớp nhé!
+                      Đăng nhập mã học sinh để lưu lại điểm thưởng XP và ghi danh lên Bảng Vàng của lớp nhé!
                     </p>
                     <button
                       onClick={() => {
@@ -315,7 +315,7 @@ export default function HomePage() {
                       }}
                       className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition"
                     >
-                      Đăng Nhập Ngay (1-Click)
+                      Đăng Nhập Học Sinh
                     </button>
                   </div>
                 )}
