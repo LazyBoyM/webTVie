@@ -10,7 +10,6 @@ import AuthModal from "./AuthModal";
 export default function Navbar() {
   const { student, teacher, logout } = useAuth();
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authTab, setAuthTab] = useState<"student" | "teacher">("student");
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   const toggleSound = () => {
@@ -22,7 +21,6 @@ export default function Navbar() {
 
   const handleOpenLogin = () => {
     sound.playClick();
-    setAuthTab("student");
     setAuthModalOpen(true);
   };
 
@@ -145,12 +143,21 @@ export default function Navbar() {
                 </button>
               </div>
             ) : (
-              <button
-                onClick={handleOpenLogin}
-                className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition"
-              >
-                Đăng Nhập
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleOpenLogin}
+                  className="px-3.5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition"
+                >
+                  Học Sinh Đăng Nhập
+                </button>
+                <Link
+                  href="/teacher"
+                  onClick={() => sound.playClick()}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 hover:text-emerald-700 bg-slate-100 hover:bg-emerald-50 border border-slate-200 rounded-xl transition"
+                >
+                  <span>👩‍🏫</span> Cổng Giáo Viên
+                </Link>
+              </div>
             )}
           </div>
         </div>
@@ -159,7 +166,6 @@ export default function Navbar() {
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
-        defaultTab={authTab}
       />
     </>
   );

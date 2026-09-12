@@ -94,25 +94,45 @@ export function useAuth() {
     };
   }, []);
 
-  const loginAsStudent = (studentId: string, pin?: string): { success: boolean; message?: string } => {
+  const loginAsStudent = async (studentId: string, pin?: string): Promise<{ success: boolean; message?: string }> => {
     if (!studentId || !studentId.trim()) {
       return { success: false, message: "Vui lòng nhập mã học sinh!" };
     }
-    const classList = getClassStudents();
-    const found = classList.find(
-      (s) => s.studentId.toUpperCase() === studentId.trim().toUpperCase()
+    const cleanId = studentId.trim().toUpperCase();
+    const cleanPin = (pin || "").trim();
+
+    // 1. Tìm trong local cache trước
+    let classList = getClassStudents();
+    let found = classList.find(
+      (s) => s.studentId.toUpperCase() === cleanId
     );
+
+    // 2. Nếu chưa có ở local (học sinh mới được cô tạo trên Turso Cloud), tải trực tiếp từ Turso
+    if (!found) {
+      try {
+        const res = await fetch("/api/students");
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          saveClassStudents(data.data);
+          classList = data.data;
+          found = classList.find((s) => s.studentId.toUpperCase() === cleanId);
+        }
+      } catch (err) {
+        console.error("Lỗi fetch học sinh khi đăng nhập:", err);
+      }
+    }
+
     if (!found) {
       return {
         success: false,
-        message: `Mã học sinh "${studentId.trim().toUpperCase()}" chưa được đăng ký trong hệ thống!`,
+        message: `Mã học sinh "${cleanId}" chưa được đăng ký trong hệ thống!`,
       };
     }
-    const requiredPin = found.pin || "1234";
-    if (!pin || pin.trim() !== requiredPin) {
+    const requiredPin = (found.pin || "1234").trim();
+    if (!cleanPin || cleanPin !== requiredPin) {
       return {
         success: false,
-        message: "Mã PIN không chính xác! Vui lòng kiểm tra lại.",
+        message: "Mã PIN không chính xác! (Mặc định: 1234)",
       };
     }
     saveStoredStudent(found);

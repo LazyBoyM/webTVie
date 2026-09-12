@@ -51,6 +51,7 @@ export async function ensureTursoTables(client: Client) {
     CREATE TABLE IF NOT EXISTS students (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      pin TEXT DEFAULT '1234',
       grade INTEGER DEFAULT 4,
       avatar TEXT DEFAULT '🦊',
       xp INTEGER DEFAULT 0,

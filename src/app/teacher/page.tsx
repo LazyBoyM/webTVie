@@ -59,11 +59,30 @@ export default function TeacherPage() {
 
   // Modal tạo học sinh
   const [createStudentModalOpen, setCreateStudentModalOpen] = useState(false);
+  const [studentIdInput, setStudentIdInput] = useState("");
   const [studentName, setStudentName] = useState("");
+  const [studentPin, setStudentPin] = useState("1234");
   const [studentGrade, setStudentGrade] = useState(4);
   const [studentAvatar, setStudentAvatar] = useState("🦊");
 
   const avatarOptions = ["🦊", "🐼", "🐱", "🦁", "🐰", "🐻", "🦄", "🐶", "🐨", "🐯"];
+
+  const openCreateStudentModal = () => {
+    sound.playClick();
+    const hsNumbers = students
+      .map((s) => String(s.studentId || "").toUpperCase())
+      .filter((id) => id.startsWith("HS"))
+      .map((id) => parseInt(id.replace("HS", ""), 10))
+      .filter((n) => !isNaN(n));
+    const maxNum = hsNumbers.length > 0 ? Math.max(...hsNumbers) : 3;
+    const nextNum = maxNum + 1;
+    const suggestedId = `HS${nextNum < 10 ? "0" + nextNum : nextNum}`;
+    setStudentIdInput(suggestedId);
+    setStudentPin("1234");
+    setStudentName("");
+    setStudentAvatar("🦊");
+    setCreateStudentModalOpen(true);
+  };
 
   // Tải dữ liệu từ API SQLite
   const loadData = async () => {
@@ -241,12 +260,17 @@ export default function TeacherPage() {
     sound.playClick();
     setDbLoading(true);
 
+    const targetId = studentIdInput.trim().toUpperCase() || undefined;
+    const targetPin = studentPin.trim() || "1234";
+
     try {
       const res = await fetch("/api/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          id: targetId,
           name: studentName.trim(),
+          pin: targetPin,
           grade: studentGrade,
           avatar: studentAvatar,
         }),
@@ -254,7 +278,28 @@ export default function TeacherPage() {
       const data = await res.json();
       if (data.success) {
         sound.playVictory();
-        alert(`Đã thêm học sinh "${studentName.trim()}" vào danh sách lớp thành công!`);
+        const createdId = data.data?.id || targetId || "HS";
+        alert(
+          `🎉 Đã thêm học sinh "${studentName.trim()}" thành công!\n\n📋 THÔNG TIN ĐĂNG NHẬP:\n• Mã học sinh: ${createdId}\n• Mã PIN: ${targetPin}\n\n👉 Học sinh có thể dùng thông tin này để đăng nhập ngay trên mọi máy!`
+        );
+        // Sync local storage
+        if (typeof window !== "undefined") {
+          try {
+            const raw = localStorage.getItem("eduspark_class_students");
+            const list = raw ? JSON.parse(raw) : [];
+            list.push({
+              studentId: createdId,
+              name: studentName.trim(),
+              grade: studentGrade,
+              avatar: studentAvatar,
+              xp: 0,
+              level: 1,
+              streak: 0,
+              pin: targetPin,
+            });
+            localStorage.setItem("eduspark_class_students", JSON.stringify(list));
+          } catch {}
+        }
         setStudentName("");
         setCreateStudentModalOpen(false);
         await loadData();
@@ -286,10 +331,13 @@ export default function TeacherPage() {
     }
   };
 
-  // Xử lý Sửa Tên Học Sinh
+  // Xử lý Sửa Học Sinh (Tên & PIN)
   const handleEditStudent = async (st: StudentProfile) => {
     const newName = prompt(`Nhập tên mới cho học sinh (${st.studentId}):`, st.name);
-    if (!newName || !newName.trim() || newName.trim() === st.name) return;
+    if (!newName || !newName.trim()) return;
+    const newPin = prompt(`Nhập mã PIN mới cho học sinh (${st.studentId}):`, st.pin || "1234");
+    if (!newPin || !newPin.trim()) return;
+
     sound.playClick();
     setDbLoading(true);
     try {
@@ -299,6 +347,7 @@ export default function TeacherPage() {
         body: JSON.stringify({
           id: st.studentId,
           name: newName.trim(),
+          pin: newPin.trim(),
         }),
       });
       const data = await res.json();
@@ -802,10 +851,7 @@ export default function TeacherPage() {
               </div>
 
               <button
-                onClick={() => {
-                  sound.playClick();
-                  setCreateStudentModalOpen(true);
-                }}
+                onClick={openCreateStudentModal}
                 className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition shadow-xs flex items-center justify-center gap-1.5"
               >
                 <UserPlus className="w-3.5 h-3.5" /> Thêm Học Sinh Mới
@@ -833,10 +879,17 @@ export default function TeacherPage() {
                         <td className="py-3.5 px-4 font-bold text-slate-400">{idx + 1}</td>
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-2.5">
-                            <span className="text-xl">{st.avatar || "🦊"}</span>
+                            <span className="text-2xl p-1 bg-slate-50 rounded-xl border border-slate-100">{st.avatar || "🦊"}</span>
                             <div>
                               <div className="font-bold text-slate-900 text-sm">{st.name}</div>
-                              <span className="text-[10px] text-slate-400 font-mono">{st.studentId}</span>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 font-mono font-bold text-[10px] rounded border border-indigo-100">
+                                  Mã: {st.studentId}
+                                </span>
+                                <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 font-mono font-bold text-[10px] rounded border border-emerald-100">
+                                  PIN: {st.pin || "1234"}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -1095,6 +1148,34 @@ export default function TeacherPage() {
             </div>
 
             <form onSubmit={handleCreateStudent} className="p-6 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Mã Học Sinh (Để đăng nhập):</label>
+                  <input
+                    type="text"
+                    value={studentIdInput}
+                    onChange={(e) => setStudentIdInput(e.target.value.toUpperCase())}
+                    placeholder="Ví dụ: HS04"
+                    required
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 text-slate-800 font-mono font-bold uppercase"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-0.5">Tự động gợi ý mã tiếp theo</p>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Mã PIN Đăng Nhập:</label>
+                  <input
+                    type="text"
+                    value={studentPin}
+                    onChange={(e) => setStudentPin(e.target.value)}
+                    placeholder="Mặc định: 1234"
+                    required
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 text-slate-800 font-mono font-bold"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-0.5">Mật khẩu PIN đơn giản</p>
+                </div>
+              </div>
+
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Họ Và Tên Học Sinh:</label>
                 <input

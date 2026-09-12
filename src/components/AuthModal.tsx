@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/authStore";
 import { sound } from "@/lib/soundEffects";
-import { Sparkles, User, LogIn, KeyRound, AlertCircle } from "lucide-react";
+import { Sparkles, LogIn, AlertCircle, GraduationCap } from "lucide-react";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -11,25 +12,17 @@ interface AuthModalProps {
   defaultTab?: "student" | "teacher";
 }
 
-export default function AuthModal({ isOpen, onClose, defaultTab = "student" }: AuthModalProps) {
-  const [tab, setTab] = useState<"student" | "teacher">(defaultTab);
-
-  // Student Form
+export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [studentId, setStudentId] = useState("");
   const [pin, setPin] = useState("");
-
-  // Teacher Form
-  const [teacherEmail, setTeacherEmail] = useState("");
-  const [teacherPassword, setTeacherPassword] = useState("");
-
-  // Error State
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const { loginAsStudent, loginAsTeacher } = useAuth();
+  const { loginAsStudent } = useAuth();
 
   if (!isOpen) return null;
 
-  const handleStudentSubmit = (e: React.FormEvent) => {
+  const handleStudentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
@@ -46,48 +39,31 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "student" }: A
     }
 
     sound.playClick();
-    const result = loginAsStudent(studentId.trim(), pin.trim());
-    if (!result.success) {
-      setErrorMsg(result.message || "Đăng nhập thất bại!");
+    setLoading(true);
+
+    try {
+      const result = await loginAsStudent(studentId.trim(), pin.trim());
+      if (!result.success) {
+        setErrorMsg(result.message || "Đăng nhập thất bại!");
+        sound.playWrong();
+        setLoading(false);
+        return;
+      }
+
+      sound.playVictory();
+      setStudentId("");
+      setPin("");
+      onClose();
+    } catch {
+      setErrorMsg("Lỗi kết nối CSDL, vui lòng thử lại!");
       sound.playWrong();
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    sound.playVictory();
-    onClose();
-  };
-
-  const handleTeacherSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg(null);
-
-    if (!teacherEmail.trim() || !teacherPassword.trim()) {
-      setErrorMsg("Vui lòng nhập đầy đủ email và mật khẩu!");
-      sound.playWrong();
-      return;
-    }
-
-    sound.playClick();
-    const result = loginAsTeacher(teacherEmail.trim(), teacherPassword.trim());
-    if (!result.success) {
-      setErrorMsg(result.message || "Email hoặc mật khẩu không chính xác!");
-      sound.playWrong();
-      return;
-    }
-
-    sound.playVictory();
-    onClose();
-    window.location.href = "/teacher";
-  };
-
-  const switchTab = (newTab: "student" | "teacher") => {
-    sound.playClick();
-    setTab(newTab);
-    setErrorMsg(null);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/65 backdrop-blur-sm animate-fade-in">
       <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border-2 border-slate-200 overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 p-6 text-white text-center relative">
@@ -100,43 +76,13 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "student" }: A
           >
             ✕
           </button>
-          <div className="inline-flex p-2.5 bg-white/10 rounded-2xl mb-2 backdrop-blur-md">
+          <div className="inline-flex p-3 bg-white/10 rounded-2xl mb-2 backdrop-blur-md">
             <Sparkles className="w-6 h-6 text-amber-300" />
           </div>
-          <h3 className="text-xl font-bold font-heading">
-            {tab === "student" ? "Đăng Nhập Học Sinh" : "Cổng Quản Trị Giáo Viên"}
-          </h3>
+          <h3 className="text-xl font-bold font-heading">Đăng Nhập Học Sinh</h3>
           <p className="text-indigo-100 text-xs mt-1">
-            {tab === "student"
-              ? "Nhập mã học sinh và mã PIN để vào học"
-              : "Đăng nhập tài khoản giáo viên để quản lý lớp"}
+            Nhập mã thẻ học sinh và mã PIN để vào ôn tập và tích lũy điểm thưởng
           </p>
-        </div>
-
-        {/* Tab Switcher */}
-        <div className="flex border-b border-slate-100 bg-slate-50 p-1.5 gap-1.5">
-          <button
-            type="button"
-            onClick={() => switchTab("student")}
-            className={`flex-1 py-2.5 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition ${
-              tab === "student"
-                ? "bg-white text-indigo-600 shadow-xs"
-                : "text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <User className="w-4 h-4" /> Học Sinh
-          </button>
-          <button
-            type="button"
-            onClick={() => switchTab("teacher")}
-            className={`flex-1 py-2.5 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition ${
-              tab === "teacher"
-                ? "bg-white text-indigo-600 shadow-xs"
-                : "text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <KeyRound className="w-4 h-4" /> Cô Giáo
-          </button>
         </div>
 
         {/* Form Body */}
@@ -148,84 +94,64 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "student" }: A
             </div>
           )}
 
-          {tab === "student" ? (
-            <form onSubmit={handleStudentSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Mã Học Sinh (ID Thẻ)
-                </label>
-                <input
-                  type="text"
-                  required
-                  autoFocus
-                  placeholder="Ví dụ: HS01, HS02..."
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  className="w-full px-4 py-2.5 text-base font-bold text-slate-800 uppercase bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:border-indigo-500 focus:outline-none transition"
-                />
-              </div>
+          <form onSubmit={handleStudentSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                Mã Thẻ Học Sinh
+              </label>
+              <input
+                type="text"
+                required
+                autoFocus
+                placeholder="Ví dụ: HS01, HS02, HS03..."
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                className="w-full px-4 py-2.5 text-base font-bold text-slate-800 uppercase bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:border-indigo-500 focus:outline-none transition"
+              />
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Mã PIN Bảo Vệ
-                </label>
-                <input
-                  type="password"
-                  required
-                  maxLength={6}
-                  placeholder="Nhập mã PIN..."
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  className="w-full px-4 py-2.5 text-base bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:border-indigo-500 focus:outline-none transition"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center justify-between">
+                <span>Mã PIN Bảo Vệ</span>
+                <span className="text-[10px] text-slate-400 font-normal">Mặc định: 1234</span>
+              </label>
+              <input
+                type="password"
+                required
+                maxLength={6}
+                placeholder="Nhập mã PIN (1234)..."
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                className="w-full px-4 py-2.5 text-base bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:border-indigo-500 focus:outline-none transition"
+              />
+            </div>
 
-              <button
-                type="submit"
-                className="w-full py-3 text-white font-bold text-base rounded-xl bg-indigo-600 hover:bg-indigo-700 transition shadow-sm flex items-center justify-center gap-2"
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 text-white font-bold text-base rounded-xl bg-indigo-600 hover:bg-indigo-700 transition shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <LogIn className="w-4 h-4" /> {loading ? "Đang xác thực..." : "Vào Học Ngay"}
+            </button>
+          </form>
+
+          {/* Dành cho giáo viên - Link chuyển tiếp duy nhất sang Cổng Quản Trị */}
+          <div className="mt-5 pt-4 border-t border-slate-100 text-center">
+            <p className="text-xs text-slate-500 flex items-center justify-center gap-1.5">
+              <GraduationCap className="w-4 h-4 text-emerald-600" />
+              <span>Cô giáo quản lý lớp học?</span>
+              <Link
+                href="/teacher"
+                onClick={() => {
+                  sound.playClick();
+                  onClose();
+                }}
+                className="font-bold text-emerald-600 hover:text-emerald-800 hover:underline"
               >
-                <LogIn className="w-4 h-4" /> Đăng Nhập
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleTeacherSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Email Giáo Viên
-                </label>
-                <input
-                  type="email"
-                  required
-                  autoFocus
-                  placeholder="email@example.com"
-                  value={teacherEmail}
-                  onChange={(e) => setTeacherEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:border-indigo-500 focus:outline-none transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Mật Khẩu
-                </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="Nhập mật khẩu..."
-                  value={teacherPassword}
-                  onChange={(e) => setTeacherPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:border-indigo-500 focus:outline-none transition"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-3 text-white font-bold text-base rounded-xl bg-emerald-600 hover:bg-emerald-700 transition shadow-sm flex items-center justify-center gap-2"
-              >
-                <LogIn className="w-4 h-4" /> Đăng Nhập Quản Trị
-              </button>
-            </form>
-          )}
+                Đến Cổng Giáo Viên →
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>
